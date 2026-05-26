@@ -1,0 +1,77 @@
+export interface UserProfile {
+  id: string;
+  name: string;
+  lastname?: string;
+  email: string;
+  description?: string; // bio
+  interests?: Array<{ id: string; name?: string }>;
+  freeTimeSchedule?: Array<{ dayOfTheWeek: string; startsAt: string; endsAt: string }>;
+  profilePicURL?: string;
+  semester?: number;
+  programs?: string[];
+  role?: string;
+}
+
+export const userService = {
+  async getUserById(userId: string): Promise<UserProfile | null> {
+    console.log(`[Mock UserService] getUserById: ${userId}`);
+    // If it's the current user, try reading from localStorage
+    const savedId = localStorage.getItem('user_id');
+    if (userId === savedId) {
+      const raw = localStorage.getItem('user_data');
+      if (raw) {
+        try {
+          return JSON.parse(raw) as UserProfile;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Default mock user
+    const formattedName = userId
+      .split('_')
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(' ');
+
+    return {
+      id: userId,
+      name: formattedName,
+      lastname: '',
+      email: `${userId}@example.com`,
+      description: '¡A jugar!',
+      interests: [{ id: 'coding' }, { id: 'gaming' }],
+      freeTimeSchedule: [
+        { dayOfTheWeek: 'MONDAY', startsAt: '08:00:00', endsAt: '12:00:00' },
+        { dayOfTheWeek: 'WEDNESDAY', startsAt: '14:00:00', endsAt: '18:00:00' },
+      ],
+      semester: 1,
+      programs: ['Ingeniería de Sistemas'],
+      role: 'USER',
+    };
+  },
+
+  async getUserByEmail(email: string): Promise<UserProfile | null> {
+    console.log(`[Mock UserService] getUserByEmail: ${email}`);
+    const localPart = email.split('@')[0] || 'usuario';
+    
+    // Check if the current user matches this email
+    const raw = localStorage.getItem('user_data');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as UserProfile;
+        if (parsed.email === email) {
+          return parsed;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return this.getUserById(localPart);
+  },
+
+  async updatePresence(userId: string, isOnline: boolean): Promise<void> {
+    console.log(`[Mock UserService] updatePresence for ${userId}: ${isOnline}`);
+  },
+};
