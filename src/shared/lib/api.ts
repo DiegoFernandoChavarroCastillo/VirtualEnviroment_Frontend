@@ -1,10 +1,18 @@
-const usersURL = import.meta.env.VITE_USER_MGMT_URL;
-const authURL = import.meta.env.VITE_AUTH_MGMT_URL;
-const activitiesURL = import.meta.env.VITE_ACTIVITIES_MGMT_URL;
-export const connectionsURL =  import.meta.env.VITE_CONNECTIONS_MGMT_URL;
-export const realTimeURL = import.meta.env.VITE_VIRTUAL_ENVIRONMENT_URL;
-const reportsURL = import.meta.env.VITE_REPORTS_SERVICE_URL;
+import { sessionStore } from '@/features/auth/services/auth.service';
 
+const REALTIME_URL = (import.meta.env.VITE_REALTIME_URL ?? '').replace(/\/$/, '');
+
+/**
+ * Single API base URL.
+ *
+ * The backend exposes auth, user, leaderboard and connection endpoints in
+ * addition to the realtime WebSocket gateways, so the frontend talks to one
+ * service: the realtime microservice.
+ */
+const API_BASE = REALTIME_URL;
+
+/** Alias used by socket consumers (shooter/football/socket context). */
+export const realTimeURL = REALTIME_URL;
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -28,15 +36,7 @@ class ApiClient {
   }
 
   private getToken(): string | null {
-    return localStorage.getItem('auth_token');
-  }
-
-  private setToken(token: string): void {
-    localStorage.setItem('auth_token', token);
-  }
-
-  clearToken(): void {
-    localStorage.removeItem('auth_token');
+    return sessionStore.get().token;
   }
 
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -147,36 +147,9 @@ class ApiClient {
     }
 
   }
-
-  setTokenFromResponse(response: { token?: string }): void {
-    if (response.token) {
-      this.setToken(response.token);
-    }
-  }
 }
 
-export const REPORT_TYPE = {
-  USER: 'USER',
-  CONTENT: 'CONTENT',
-};
-
-export const REPORT_REASON = {
-  SPAM: 'SPAM',
-  COMPORTAMIENTO_INAPROPIADO: 'COMPORTAMIENTO_INAPROPIADO',
-  CONTENIDO_OFENSIVO: 'CONTENIDO_OFENSIVO',
-  ACOSO: 'ACOSO',
-  FRAUD: 'FRAUD',
-  INFORMACION_FALSA: 'INFORMACION_FALSA',
-  OTRO: 'OTRO',
-};
-
-
-export const AUTH_API_BASE = 'auth';
-export const USERS_API_BASE = 'users';
-export const REPORTS_API_BASE = 'reports';
-export const ACTIVITIES_API_BASE = 'activities';
-export const userApi = new ApiClient(usersURL);
-export const authApi = new ApiClient(authURL);
-export const activityApi = new ApiClient(activitiesURL);
-export const connectionsApi = new ApiClient(connectionsURL);
-export const reportsApi = new ApiClient(reportsURL);
+export const authApi = new ApiClient(API_BASE);
+export const userApi = new ApiClient(API_BASE);
+export const leaderboardApi = new ApiClient(API_BASE);
+export const connectionsApi = new ApiClient(API_BASE);

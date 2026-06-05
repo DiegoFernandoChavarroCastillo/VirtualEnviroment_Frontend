@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { userService, type UserProfile } from '@/features/users/services/user.service';
+import { useAuth } from '@/features/auth/contexts/AuthContext';
 
 interface AvailabilityBlock {
   day: string;
@@ -55,7 +56,15 @@ const CurrentUserContext = createContext<{
   isLoading: boolean;
 } | null>(null);
 
+/**
+ * CurrentUserProvider — UI-state of the current user's profile.
+ *
+ * Identity (who you are) is owned by `AuthProvider`. This provider only
+ * fetches and exposes the rich profile (bio, interests, schedule) plus
+ * a way to override it locally after edits.
+ */
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
   const [profile, setProfile] = useState<CurrentUserProfile>(defaultProfile);
   const [userData, setUserData] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,59 +73,44 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     setProfile(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const setUserDataAndPersist = useCallback((data: UserProfile | null) => {
-    setUserData(data);
-    if (data) {
-      try {
-        localStorage.setItem('user_data', JSON.stringify(data));
-      } catch {
-        /* ignore */
-      }
-    } else {
-      localStorage.removeItem('user_data');
-    }
-  }, []);
-
   useEffect(() => {
-    const loadUserData = async () => {
-      const userId = localStorage.getItem('user_id');
-      console.log("[CurrentUserContext] Initializing session, found userId in local storage:", userId);
-
-      if (userId) {
-        try {
-          console.log("[CurrentUserContext] Fetching full user data for session...");
-          const user = await userService.getUserById(userId);
-          if (user) {
-            console.log("[CurrentUserContext] User data loaded successfully:", user.name);
-            setUserDataAndPersist(user);
-            setProfile({
-              bio: user.description || '',
-              interests: user.interests?.map(i => i.id) || [],
-              availability: user.freeTimeSchedule?.map(f => ({
-                day: toDay(f.dayOfTheWeek),
-                start: toTime(f.startsAt),
-                end: toTime(f.endsAt),
-              })) || [],
-            });
-            // Marcar como online al cargar la sesión
-            userService.updatePresence(userId, true);
-          } else {
-            console.warn("[CurrentUserContext] User not found in backend for ID:", userId);
-          }
-        } catch (error) {
-          console.error('[CurrentUserContext] Error loading user data:', error);
-        }
-      } else {
-        console.warn("[CurrentUserContext] No user_id found in localStorage. User not logged in?");
+    let cancelled = false;
+    const load = async () => {
+      if (authLoading) return;
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+      try {
+        const fetched = await userService.getUserById(user.id);
+        if (cancelled || !fetched) {
+          setIsLoading(false);
+          return;
+        }
+        setUserData(fetched);
+        setProfile({
+          bio: fetched.description || fetched.bio || '',
+          interests: fetched.interests?.map(i => i.id) || [],
+          availability: fetched.freeTimeSchedule?.map(f => ({
+            day: toDay(f.dayOfTheWeek),
+            start: toTime(f.startsAt),
+            end: toTime(f.endsAt),
+          })) || [],
+        });
+      } catch (error) {
+        console.error('[CurrentUserContext] Error loading user data:', error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
-
-    loadUserData();
-  }, [setUserDataAndPersist]);
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, authLoading]);
 
   return (
-    <CurrentUserContext.Provider value={{ profile, updateProfile, userData, setUserData: setUserDataAndPersist, isLoading }}>
+    <CurrentUserContext.Provider value={{ profile, updateProfile, userData, setUserData, isLoading }}>
       {children}
     </CurrentUserContext.Provider>
   );

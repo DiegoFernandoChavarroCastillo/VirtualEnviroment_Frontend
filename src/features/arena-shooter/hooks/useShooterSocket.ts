@@ -11,7 +11,7 @@ import {
   RoomStatePayload,
 } from '../types/arena-shooter.types';
 import { realTimeURL } from '@/shared/lib/api';
-import { authService } from '@/features/auth/services/auth.service';
+import { useAuth } from '@/features/auth/contexts/AuthContext';
 
 const REALTIME_URL = import.meta.env.VITE_REALTIME_URL || realTimeURL;
 const RECONNECT_TIMEOUT_MS = 10000;
@@ -49,6 +49,7 @@ export const useShooterSocket = ({
   onConnectionLost,
   onReconnected,
 }: UseShooterSocketProps) => {
+  const { token } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -93,7 +94,10 @@ export const useShooterSocket = ({
   ]);
 
   useEffect(() => {
-    const token = authService.getToken() || localStorage.getItem('user_id');
+    if (!token) {
+      console.warn('[useShooterSocket] No auth token — skipping socket connection');
+      return;
+    }
 
     // Flag: set to true when we return intentionally so the disconnect
     // timeout doesn't fire a second onReturnToVirtualWorld call.
@@ -171,7 +175,7 @@ export const useShooterSocket = ({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, playerName]);
+  }, [roomId, playerName, token]);
 
   const emitPlayerInput = useCallback((input: ShooterInput) => {
     const now = Date.now();

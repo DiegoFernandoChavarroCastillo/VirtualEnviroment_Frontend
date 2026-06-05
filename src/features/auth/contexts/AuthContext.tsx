@@ -1,61 +1,102 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { authService, type AuthUser, type RegisterDto, type LoginDto } from '../services/auth.service';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import {
+  authService,
+  sessionStore,
+  type AuthUser,
+  type RegisterDto,
+  type LoginDto,
+  type LoginResponse,
+} from '../services/auth.service';
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (dto: LoginDto) => Promise<void>;
-  register: (dto: RegisterDto) => Promise<void>;
-  logout: () => void;
   isAuthenticated: boolean;
+  login: (dto: LoginDto) => Promise<LoginResponse>;
+  register: (dto: RegisterDto) => Promise<LoginResponse>;
+  logout: () => Promise<void>;
+  /**
+   * Subscribe to session changes. Components (notably `SocketContext`) can
+   * pass a callback and recreate sockets when the token rotates, without
+   * resorting to `localStorage` polling.
+   */
+  subscribe: (cb: (token: string | null) => void) => () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/**
+ * AuthProvider — single source of truth for the authenticated session.
+ *
+ * Security model:
+ *   - The access token lives ONLY in React state (in memory).
+ *   - The refresh token is an HttpOnly cookie managed by the backend.
+ *   - On mount we attempt a silent refresh via `authService.restoreSession`.
+ *   - Any component can subscribe to token changes through `subscribe()`.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => authService.getUser());
-  const [token, setToken] = useState<string | null>(() => authService.getToken());
+  // `useSyncExternalStore` keeps React in sync with the imperative
+  // `sessionStore` (login / logout / refresh from anywhere).
+  const session = useSyncExternalStore(
+    (cb) => sessionStore.subscribe(() => cb()),
+    () => sessionStore.get(),
+    () => sessionStore.get(),
+  );
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = authService.getToken();
-    const storedUser = authService.getUser();
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(storedUser);
-      authService.getProfile().then(setUser).catch(() => {
-        authService.clearSession();
-        setToken(null);
-        setUser(null);
-      });
-    }
-    setIsLoading(false);
+    let cancelled = false;
+    (async () => {
+      const res = await authService.restoreSession();
+      if (cancelled) return;
+      if (res) {
+        // Optionally pick up fresh profile fields.
+        const fresh = await authService.getProfile();
+        if (!cancelled && fresh) {
+          sessionStore.set(res.accessToken, fresh);
+        }
+      }
+      setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const login = useCallback(async (dto: LoginDto) => {
-    const res = await authService.login(dto);
-    setToken(res.accessToken);
-    setUser(res.user);
-    localStorage.setItem('user_id', res.user.id);
+  const login = useCallback(async (dto: LoginDto) => authService.login(dto), []);
+  const register = useCallback(async (dto: RegisterDto) => authService.register(dto), []);
+  const logout = useCallback(async () => {
+    await authService.logout();
   }, []);
 
-  const register = useCallback(async (dto: RegisterDto) => {
-    const res = await authService.register(dto);
-    setToken(res.accessToken);
-    setUser(res.user);
-    localStorage.setItem('user_id', res.user.id);
-  }, []);
-
-  const logout = useCallback(() => {
-    authService.logout();
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('user_id');
-  }, []);
+  const subscribe = useCallback(
+    (cb: (token: string | null) => void) => sessionStore.subscribe((s) => cb(s.token)),
+    [],
+  );
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, isAuthenticated: !!token && !!user }}>
+    <AuthContext.Provider
+      value={{
+        user: session.user,
+        token: session.token,
+        isLoading,
+        isAuthenticated: !!session.token && !!session.user,
+        login,
+        register,
+        logout,
+        subscribe,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -26,9 +26,6 @@ function formatTime(seconds: number): string {
 export default function Lobby() {
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
-  const [nickname, setNickname] = useState('')
-  const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[3].value)
-  const [error, setError] = useState('')
   const [myStats, setMyStats] = useState<LeaderboardEntry[]>([])
   const [statsLoading, setStatsLoading] = useState(false)
 
@@ -42,40 +39,13 @@ export default function Lobby() {
     }
   }, [isAuthenticated, user])
 
-  const handleGuestEnter = () => {
-    const name = nickname.trim()
-    if (!name) {
-      setError('Ingresa un nickname para continuar')
-      return
-    }
-    setError('')
-    const userId = name.toLowerCase().replace(/[^a-z0-9]/g, '_')
-    localStorage.setItem('user_id', userId)
-    localStorage.setItem('auth_token', 'guest-token')
-    localStorage.setItem('user_data', JSON.stringify({
-      id: userId,
-      name,
-      email: userId + '@test.com',
-      role: 'USER',
-      color: selectedColor,
-    }))
-    navigate('/virtual-world')
-  }
-
   const handleAuthenticatedEnter = () => {
-    if (!user) return
-    localStorage.setItem('user_id', user.id)
-    localStorage.setItem('user_data', JSON.stringify({
-      id: user.id,
-      name: user.username,
-      username: user.username,
-      avatarColor: user.avatarColor,
-    }))
+    if (!isAuthenticated || !user) return
     navigate('/virtual-world')
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
   }
 
   const bestScore = myStats.length > 0 ? Math.max(...myStats.map(s => s.score)) : 0
@@ -193,7 +163,7 @@ export default function Lobby() {
             </motion.button>
           </motion.div>
         ) : (
-          /* ── Guest view ── */
+          /* ── Public view (must sign in to play) ── */
           <motion.div
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -211,45 +181,24 @@ export default function Lobby() {
               <p className="text-gray-500 text-sm">Sala de juegos multijugador</p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Tu nickname</label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => { setNickname(e.target.value); setError('') }}
-                onKeyDown={(e) => e.key === 'Enter' && handleGuestEnter()}
-                placeholder="Ej: Juan Perez"
-                maxLength={30}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
-                autoFocus
-              />
-              {error && <p className="text-red-500 text-xs">{error}</p>}
-            </div>
+            <p className="text-center text-sm text-gray-500">
+              Inicia sesión o regístrate para acceder al mundo virtual.
+            </p>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-700">Color de avatar</label>
-              <div className="grid grid-cols-4 gap-3">
-                {AVATAR_COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    onClick={() => setSelectedColor(c.value)}
-                    className={'w-full aspect-square rounded-xl border-2 transition-all ' + (selectedColor === c.value ? 'border-gray-800 scale-110 shadow-lg' : 'border-transparent hover:scale-105')}
-                    style={{ backgroundColor: c.value }}
-                    title={c.name}
-                    aria-label={c.name}
-                  />
-                ))}
-              </div>
+            <div className="flex flex-col gap-3">
+              <Link
+                to="/login"
+                className="w-full py-3.5 text-center rounded-xl font-semibold text-[#e67e22] border-2 border-[#e67e22] hover:bg-[#e67e22]/5 transition-all"
+              >
+                Entrar
+              </Link>
+              <Link
+                to="/register"
+                className="w-full py-3.5 text-center rounded-xl font-semibold text-white bg-gradient-to-r from-[#e67e22] to-[#c0392b] hover:from-[#d35400] hover:to-[#a93226] shadow-lg shadow-orange-200 transition-all"
+              >
+                Registrarse
+              </Link>
             </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleGuestEnter}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-[#e67e22] to-[#c0392b] hover:from-[#d35400] hover:to-[#a93226] shadow-lg shadow-orange-200 transition-all"
-            >
-              Entrar como invitado
-            </motion.button>
           </motion.div>
         )}
 

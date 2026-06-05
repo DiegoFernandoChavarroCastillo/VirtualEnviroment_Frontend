@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useReducer, useState } from 'react';
 import { useSocket } from '@/shared/contexts/SocketContext';
+import { useAuth } from '@/features/auth/contexts/AuthContext';
 import { UserInMap, ChatMessage, Position, AvatarPosition, PositionUpdate, RealtimeError } from '../types/realtime.types';
 import { toast } from '@/shared/components/ui/use-toast';
 import {
@@ -72,6 +73,7 @@ function mapReducer(state: MapState, action: MapAction): MapState {
 
 export const useRealtimeMap = () => {
   const { socket, isConnected: socketConnected } = useSocket();
+  const { user, logout } = useAuth();
   const [state, dispatch] = useReducer(mapReducer, INITIAL_STATE);
 
   // Football Duel state
@@ -86,8 +88,11 @@ export const useRealtimeMap = () => {
   const lastPadCheckSent = useRef<number>(0);
   const PAD_CHECK_THROTTLE_MS = 100; // Send pad position checks frequently for reliable detection
 
-  // ── Get auth userId from localStorage (no JWT required) ──────────────────
-  const myAuthId = useRef<string | null>(localStorage.getItem('user_id'));
+  // The current user comes from the AuthProvider (no localStorage lookups).
+  const myAuthId = useRef<string | null>(user?.id ?? null);
+  useEffect(() => {
+    myAuthId.current = user?.id ?? null;
+  }, [user?.id]);
 
   // ── Mount / unmount cleanup ───────────────────────────────────────────────
   useEffect(() => {
@@ -188,10 +193,10 @@ export const useRealtimeMap = () => {
     const onError = (error: RealtimeError) => {
       console.error('[Realtime Error]:', error);
       if (error.code === 'AUTH_ERROR') {
-        console.warn('[useRealtimeMap] Authentication error — redirecting to lobby');
-        localStorage.removeItem('user_id');
-        localStorage.removeItem('user_data');
-        window.location.href = '/';
+        console.warn('[useRealtimeMap] Authentication error — clearing session');
+        // Wipe the in-memory session. The AuthProvider will redirect on next
+        // render via the router guard (or the user can navigate to /).
+        logout().catch(() => undefined);
         return;
       }
       toast({

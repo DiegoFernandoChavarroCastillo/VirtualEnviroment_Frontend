@@ -1,4 +1,4 @@
-import { userApi } from '@/shared/lib/api';
+import { leaderboardApi } from '@/shared/lib/api';
 
 export interface LeaderboardEntry {
   id: string;
@@ -20,7 +20,7 @@ export interface LeaderboardResponse {
 
 export const leaderboardService = {
   async getGlobal(limit = 20): Promise<LeaderboardEntry[]> {
-    const res = await userApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
+    const res = await leaderboardApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
       `/leaderboard/global?limit=${limit}`,
       { method: 'GET' }
     );
@@ -28,7 +28,7 @@ export const leaderboardService = {
   },
 
   async getWeekly(limit = 20): Promise<LeaderboardEntry[]> {
-    const res = await userApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
+    const res = await leaderboardApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
       `/leaderboard/weekly?limit=${limit}`,
       { method: 'GET' }
     );
@@ -36,7 +36,7 @@ export const leaderboardService = {
   },
 
   async getDaily(limit = 20): Promise<LeaderboardEntry[]> {
-    const res = await userApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
+    const res = await leaderboardApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
       `/leaderboard/daily?limit=${limit}`,
       { method: 'GET' }
     );
@@ -44,7 +44,7 @@ export const leaderboardService = {
   },
 
   async getUserStats(username: string, limit = 10): Promise<LeaderboardEntry[]> {
-    const res = await userApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
+    const res = await leaderboardApi.request<LeaderboardEntry[] | { entries: LeaderboardEntry[] }>(
       `/leaderboard/user/${encodeURIComponent(username)}?limit=${limit}`,
       { method: 'GET' }
     );

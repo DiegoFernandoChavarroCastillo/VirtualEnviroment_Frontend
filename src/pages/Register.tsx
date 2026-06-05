@@ -20,6 +20,7 @@ export default function Register() {
   const navigate = useNavigate()
   const { register } = useAuth()
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -29,10 +30,13 @@ export default function Register() {
 
   const pwStrength = getPasswordStrength(password)
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const name = username.trim()
-    if (!name || !password || !confirmPassword) {
+    const mail = email.trim()
+    if (!name || !mail || !password || !confirmPassword) {
       setError('Completa todos los campos')
       return
     }
@@ -40,8 +44,16 @@ export default function Register() {
       setError('El usuario debe tener al menos 3 caracteres')
       return
     }
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
+    if (!EMAIL_RE.test(mail)) {
+      setError('El correo no tiene un formato válido')
+      return
+    }
+    if (mail.length > 254) {
+      setError('El correo es demasiado largo')
+      return
+    }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
       return
     }
     if (password !== confirmPassword) {
@@ -51,7 +63,7 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      await register({ username: name, password, avatarColor: selectedColor })
+      await register({ username: name, email: mail, password, avatarColor: selectedColor })
       navigate('/')
     } catch (err: any) {
       setError(err.message || 'Error al registrarse')
@@ -91,13 +103,25 @@ export default function Register() {
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Correo electrónico</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError('') }}
+              placeholder="tu@correo.com"
+              maxLength={254}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
+            />
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Contraseña</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError('') }}
-                placeholder="Min. 6 caracteres"
+                placeholder="Min. 8 caracteres"
                 className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
               />
               <button

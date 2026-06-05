@@ -2,6 +2,7 @@
 import { Send, MessageSquare } from 'lucide-react';
 import { useRealtimeMap } from '../hooks/useRealtimeMap';
 import { useSocket } from '@/shared/contexts/SocketContext';
+import { useAuth } from '@/features/auth/contexts/AuthContext';
 import { connectionsApi } from '@/shared/lib/api';
 import { secureRandom, generateSecureId } from '@/shared/utils/secureRandom';
 import { toast } from '@/shared/components/ui/use-toast';
@@ -146,11 +147,7 @@ const BUBBLE_TIMEOUT = 3000;
 const LERP_FACTOR = 0.15;
 
 const VirtualWorld: React.FC = () => {
-  const currentUser = (() => {
-    const raw = localStorage.getItem('user_data');
-    if (raw) { try { return JSON.parse(raw); } catch { return null; } }
-    return null;
-  })();
+  const { user: currentUser } = useAuth();
   const { socket } = useSocket();
   const { preloadLocalUser, ensureRemoteUser, getImage, clearCache } = useAvatarImages();
   const { card: playerCard, loading: cardLoading, openCard, closeCard, markConnected } = usePlayerCard(currentUser?.id ?? null);
@@ -194,10 +191,17 @@ const VirtualWorld: React.FC = () => {
   const [player, setPlayer] = useState(() => ({
     x: secureRandom() * (WORLD_WIDTH - 200) + 100,
     y: secureRandom() * (WORLD_HEIGHT - 200) + 100,
-    name: currentUser?.name || 'TÃº',
-    color: CANVAS_THEME.primaryDark,
+    name: currentUser?.username || 'Tú',
+    color: currentUser?.avatarColor || CANVAS_THEME.primaryDark,
   }));
   const playerRef = useRef(player);
+  useEffect(() => {
+    setPlayer((prev) => ({
+      ...prev,
+      name: currentUser?.username || prev.name,
+      color: currentUser?.avatarColor || prev.color,
+    }));
+  }, [currentUser?.username, currentUser?.avatarColor]);
 
   const [inputMessage, setInputMessage] = useState('');
   const [nearbyUser, setNearbyUser] = useState<UserInMap | null>(null);
@@ -508,7 +512,7 @@ const VirtualWorld: React.FC = () => {
     const cam = cameraRef.current;
     const pads = padStatesRef.current;
     const crown = crownStateRef.current;
-    const uid = localStorage.getItem('user_id');
+    const uid = myAuthIdRef.current;
 
     ctx.clearRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
@@ -710,7 +714,7 @@ const VirtualWorld: React.FC = () => {
 
   const emitConnectAttempt = useCallback(async (targetUserId: string) => {
     if (!currentUser?.id) return;
-    // currentUser.id is the user-management ID (from localStorage 'user_id')
+    // currentUser.id is the user-management ID, sourced from the AuthProvider.
     // targetUserId here is the profileId resolved by usePlayerCard â€” also user-management ID
     try {
       await connectionsApi.request('/connections', {
@@ -796,7 +800,7 @@ const VirtualWorld: React.FC = () => {
     return (
       <ArenaShooter
         roomId={shooterRoomId}
-        localPlayer={{ userId: myAuthIdRef.current ?? '', name: currentUser?.name ?? 'TÃº' }}
+        localPlayer={{ userId: myAuthIdRef.current ?? '', name: currentUser?.username ?? 'TÃº' }}
         initialPlayers={shooterInitialPlayers}
         onReturn={handleShooterReturn}
       />
@@ -805,7 +809,7 @@ const VirtualWorld: React.FC = () => {
 
   // â”€â”€ Match screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (activeMatch) {
-    const localName = currentUser?.name || 'TÃº';
+    const localName = currentUser?.username || 'TÃº';
     return (
       <FootballDuelMatch
         matchId={activeMatch.matchId}

@@ -62,11 +62,13 @@ export function usePlayerCard(currentUserId: string | null) {
         const profileId = profile?.id ?? userId;
 
         // Determine connection state.
-        // Connections store user-management IDs, so compare against profileId.
+        // Connections store user-management IDs, so compare against the
+        // current user id (passed in via the hook prop — sourced from the
+        // AuthProvider, not from localStorage).
         let connectionState: CardConnectionState = 'none';
         let connectionId: string | null = null;
 
-        const myProfileId = localStorage.getItem('user_id');
+        const myProfileId = currentUserId;
 
         const match = connections.find(
           (c) =>

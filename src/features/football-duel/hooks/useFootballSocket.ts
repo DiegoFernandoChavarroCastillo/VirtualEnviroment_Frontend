@@ -9,7 +9,7 @@ import {
   isValidSnapshot,
 } from '../types/football-duel.types';
 import { realTimeURL } from '@/shared/lib/api';
-import { authService } from '@/features/auth/services/auth.service';
+import { useAuth } from '@/features/auth/contexts/AuthContext';
 
 const REALTIME_URL = import.meta.env.VITE_REALTIME_URL || realTimeURL;
 const EMIT_THROTTLE_MS = 16; // ~60 fps
@@ -36,6 +36,7 @@ export function useFootballSocket({
   onReturnToVirtualWorld,
   onMatchNotFound,
 }: UseFootballSocketOptions): UseFootballSocketReturn {
+  const { token } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const lastEmitRef = useRef<number>(0);
 
@@ -44,7 +45,10 @@ export function useFootballSocket({
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const token = authService.getToken() || localStorage.getItem('user_id');
+    if (!token) {
+      console.warn('[useFootballSocket] No auth token — skipping socket connection');
+      return;
+    }
 
     console.log('[useFootballSocket] Connecting to /football-duel with matchId:', matchId);
 
@@ -112,7 +116,7 @@ export function useFootballSocket({
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId]);
+  }, [matchId, token]);
 
   /** Throttled emit – max 60 events/s */
   const emitPlayerInput = useCallback((input: PlayerInput) => {

@@ -3,7 +3,8 @@ import { userService } from '@/features/users/services/user.service';
 import { resolveProfilePicUrl } from '@/shared/utils/resolveProfilePicUrl';
 
 /**
- * Cache de avatares keyed por userId del mapa (JWT sub para remotos, user_id para el jugador local).
+ * Cache de avatares keyed por userId del mapa (JWT sub). El perfil siempre
+ * se resuelve contra la API; no se persiste nada en localStorage.
  */
 type ImageCache = Map<string, HTMLImageElement | null>;
 
@@ -63,18 +64,13 @@ export function useAvatarImages() {
     fetchProfile
       .then((profile) => {
         if (profile) {
-          try {
-            localStorage.setItem('user_data', JSON.stringify(profile));
-          } catch {
-            /* quota / private mode */
-          }
           applyProfile(profile.profilePicURL);
           return;
         }
-        applyProfile(readProfilePicFromStorage());
+        applyProfile(undefined);
       })
       .catch(() => {
-        applyProfile(readProfilePicFromStorage());
+        applyProfile(undefined);
       });
   }, [loadImage]);
 
@@ -123,13 +119,3 @@ export function useAvatarImages() {
   return { preloadLocalUser, ensureRemoteUser, getImage, clearCache };
 }
 
-function readProfilePicFromStorage(): string | undefined {
-  try {
-    const raw = localStorage.getItem('user_data');
-    if (!raw) return undefined;
-    const profile = JSON.parse(raw) as { profilePicURL?: string };
-    return profile?.profilePicURL;
-  } catch {
-    return undefined;
-  }
-}

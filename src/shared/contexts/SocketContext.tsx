@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { io, Socket } from 'socket.io-client';
 import { ClientToServerEvents, ServerToClientEvents } from '@/features/virtual-world/types/realtime.types';
 import { realTimeURL } from '@/shared/lib/api';
-import { authService } from '@/features/auth/services/auth.service';
+import { useAuth } from '@/features/auth/contexts/AuthContext';
 
 interface SocketContextType {
   socket: Socket<ServerToClientEvents, ClientToServerEvents> | null;
@@ -16,39 +16,44 @@ export const useSocket = () => useContext(SocketContext);
 const SOCKET_BASE_URL = import.meta.env.VITE_REALTIME_URL || realTimeURL;
 const SOCKET_NAMESPACE = '/map';
 
-function getConnectionToken(): string | null {
-  const jwt = authService.getToken();
-  if (jwt) return jwt;
-  return localStorage.getItem('user_id');
-}
-
+/**
+ * SocketProvider — owns the single `/map` socket for the app.
+ *
+ * Behaviour:
+ *   - Connects only when there is an authenticated user (token present).
+ *   - Recreates the socket when the token rotates (login / refresh / logout).
+ *   - No `localStorage` polling. The token comes straight from the
+ *     in-memory `AuthProvider`.
+ *   - Without a token, the provider exposes `socket: null` so consumers
+ *     can render an unauthenticated UI instead of attempting a connection
+ *     that will be rejected with `AUTH_ERROR`.
+ */
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { token, isLoading: authLoading } = useAuth();
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionToken, setConnectionToken] = useState<string | null>(() => getConnectionToken());
   const socketRef = useRef<Socket | null>(null);
 
-  // Poll for token changes every 10 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      const current = getConnectionToken();
-      setConnectionToken(prev => (prev !== current ? current : prev));
-    }, 10_000);
-    return () => clearInterval(interval);
-  }, []);
+    // Wait until the AuthProvider has attempted session restoration.
+    if (authLoading) return;
 
-  useEffect(() => {
+    // Tear down any previous socket (logout, token rotation, etc.).
     if (socketRef.current) {
-      console.log('[SocketProvider] Token changed — tearing down previous socket');
+      console.log('[SocketProvider] Disposing previous socket');
+      socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
       socketRef.current = null;
       setSocket(null);
+      setIsConnected(false);
     }
 
-    const token = connectionToken || 'guest-user';
+    if (!token) {
+      console.log('[SocketProvider] No token — socket left unconnected');
+      return;
+    }
 
-    console.log('[SocketProvider] Creating socket →', `${SOCKET_BASE_URL}${SOCKET_NAMESPACE}`);
-
+    console.log('[SocketProvider] Creating socket with fresh token');
     const newSocket = io(`${SOCKET_BASE_URL}${SOCKET_NAMESPACE}`, {
       auth: { token },
       transports: ['websocket', 'polling'],
@@ -66,33 +71,21 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log(`[Socket] Connected ✅ id=${newSocket.id}`);
       setIsConnected(true);
     });
-    newSocket.on('connect_error', (err) =>
-      console.error('[Socket] Connection error ❌:', err.message));
+    newSocket.on('connect_error', (err) => {
+      console.error('[Socket] Connection error ❌:', err.message);
+    });
     newSocket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
       setIsConnected(false);
     });
-    newSocket.on('reconnect_failed', () => {
-      console.warn('[Socket] Reconnection failed — recreating socket');
-      socketRef.current = null;
-      setSocket(null);
-      setIsConnected(false);
-      setTimeout(() => {
-        const current = getConnectionToken();
-        if (current) {
-          setConnectionToken(current);
-        }
-      }, 2000);
-    });
 
     socketRef.current = newSocket;
     setSocket(newSocket);
-  }, [connectionToken]);
+  }, [token, authLoading]);
 
   useEffect(() => {
     return () => {
       if (socketRef.current) {
-        console.log('[SocketProvider] App unmounting — disconnecting socket');
         socketRef.current.disconnect();
         socketRef.current = null;
       }
