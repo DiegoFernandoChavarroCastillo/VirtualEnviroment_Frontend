@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { Map } from 'lucide-react';
 import { MINIMAP_ZONES } from '../config/minimap-zones';
 import { UserInMap } from '../types/realtime.types';
+import { FOOTBALL_DUEL_ENABLED } from '@/shared/featureFlags';
 
 // ─── World / minimap dimensions ───────────────────────────────────────────────
 const WORLD_W = 1600;
@@ -31,6 +32,14 @@ const Minimap: React.FC<MinimapProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Hide football-duel markers when the feature is disabled.
+  const visibleZones = useMemo(
+    () => (FOOTBALL_DUEL_ENABLED
+      ? MINIMAP_ZONES
+      : MINIMAP_ZONES.filter((z) => z.id !== 'football')),
+    [],
+  );
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -59,7 +68,7 @@ const Minimap: React.FC<MinimapProps> = ({
     }
 
     // ── Zones ─────────────────────────────────────────────────────────────
-    for (const zone of MINIMAP_ZONES) {
+    for (const zone of visibleZones) {
       const mx = zone.x * SCALE_X;
       const my = zone.y * SCALE_Y;
       const mr = Math.max(4, zone.radius * SCALE_X);

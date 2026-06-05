@@ -3,6 +3,7 @@ import { useSocket } from '@/shared/contexts/SocketContext';
 import { useAuth } from '@/features/auth/contexts/AuthContext';
 import { UserInMap, ChatMessage, Position, AvatarPosition, PositionUpdate, RealtimeError } from '../types/realtime.types';
 import { toast } from '@/shared/components/ui/use-toast';
+import { FOOTBALL_DUEL_ENABLED } from '@/shared/featureFlags';
 import {
   PadState,
   CrownState,
@@ -76,7 +77,7 @@ export const useRealtimeMap = () => {
   const { user, logout } = useAuth();
   const [state, dispatch] = useReducer(mapReducer, INITIAL_STATE);
 
-  // Football Duel state
+  // Football Duel state — only tracked when the feature is enabled.
   const [padStates, setPadStates] = useState<PadState[]>([]);
   const [crownState, setCrownState] = useState<CrownState | null>(null);
   const [activeDuel, setActiveDuel] = useState<DuelStartedPayload | null>(null);
@@ -179,14 +180,17 @@ export const useRealtimeMap = () => {
     };
 
     const onPadStateUpdate = (pads: PadState[]) => {
+      if (!FOOTBALL_DUEL_ENABLED) return;
       setPadStates(pads);
     };
 
     const onDuelStarted = (payload: DuelStartedPayload) => {
+      if (!FOOTBALL_DUEL_ENABLED) return;
       setActiveDuel(payload);
     };
 
     const onCrownUpdate = (crownData: CrownState) => {
+      if (!FOOTBALL_DUEL_ENABLED) return;
       setCrownState(crownData.winnerId ? crownData : null);
     };
 
@@ -212,9 +216,11 @@ export const useRealtimeMap = () => {
     socket.on('positionUpdate', onPositionUpdate);
     socket.on('chatMessage', onChatMessage);
     socket.on('error', onError);
-    socket.on('padStateUpdate', onPadStateUpdate);
-    socket.on('duelStarted', onDuelStarted);
-    socket.on('crownUpdate', onCrownUpdate);
+    if (FOOTBALL_DUEL_ENABLED) {
+      socket.on('padStateUpdate', onPadStateUpdate);
+      socket.on('duelStarted', onDuelStarted);
+      socket.on('crownUpdate', onCrownUpdate);
+    }
 
     return () => {
       console.log('[useRealtimeMap] 🧹 Removing socket listeners');
@@ -267,6 +273,7 @@ export const useRealtimeMap = () => {
   }, [socket, socketConnected]);
 
   const checkDuelPads = useCallback((x: number, y: number) => {
+    if (!FOOTBALL_DUEL_ENABLED) return;
     if (!socket || !socketConnected) return;
     const now = Date.now();
     if (now - lastPadCheckSent.current > PAD_CHECK_THROTTLE_MS) {
@@ -276,6 +283,7 @@ export const useRealtimeMap = () => {
   }, [socket, socketConnected]);
 
   const clearActiveDuel = useCallback(() => {
+    if (!FOOTBALL_DUEL_ENABLED) return;
     setActiveDuel(null);
   }, []);
 

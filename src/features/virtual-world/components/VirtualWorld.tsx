@@ -7,6 +7,7 @@ import { connectionsApi } from '@/shared/lib/api';
 import { secureRandom, generateSecureId } from '@/shared/utils/secureRandom';
 import { toast } from '@/shared/components/ui/use-toast';
 import { UserInMap, ChatMessage } from '../types/realtime.types';
+import { FOOTBALL_DUEL_ENABLED } from '@/shared/featureFlags';
 import { drawDuelPads } from '@/features/football-duel/components/DuelPads';
 import { drawCrown } from '@/features/football-duel/components/Crown';
 import { PadId, PAD_AREAS, PadState, CrownState, DuelStartedPayload } from '@/features/football-duel/types/football-duel.types';
@@ -496,7 +497,9 @@ const VirtualWorld: React.FC = () => {
     });
     if (nearbyUser?.userId !== closest?.userId) setNearbyUser(closest);
 
-    checkDuelPadsRef.current?.(playerRef.current.x, playerRef.current.y);
+    if (FOOTBALL_DUEL_ENABLED) {
+      checkDuelPadsRef.current?.(playerRef.current.x, playerRef.current.y);
+    }
 
     draw();
     requestRef.current = requestAnimationFrame(update);
@@ -523,19 +526,21 @@ const VirtualWorld: React.FC = () => {
     // World decorations: grass, paths, buildings, trees, lamps, benches
     drawWorldDecor(ctx, cam.x, cam.y, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, Date.now());
 
-    // Duel pads
-    const padsToRender: PadState[] = pads.length > 0 ? pads : [
-      { padId: 'pad-a', status: 'available', activationProgress: 0 },
-      { padId: 'pad-b', status: 'available', activationProgress: 0 },
-    ];
-    const localOverlap = (['pad-a', 'pad-b'] as PadId[]).find(padId => {
-      const a = PAD_AREAS[padId];
-      const px = playerRef.current.x, py = playerRef.current.y;
-      const cx = Math.max(a.x, Math.min(px, a.x + a.width));
-      const cy = Math.max(a.y, Math.min(py, a.y + a.height));
-      return (px - cx) ** 2 + (py - cy) ** 2 <= AVATAR_RADIUS ** 2;
-    }) ?? null;
-    drawDuelPads({ ctx, padStates: padsToRender, localPlayerOverlap: localOverlap });
+    // Duel pads (football-duel feature)
+    if (FOOTBALL_DUEL_ENABLED) {
+      const padsToRender: PadState[] = pads.length > 0 ? pads : [
+        { padId: 'pad-a', status: 'available', activationProgress: 0 },
+        { padId: 'pad-b', status: 'available', activationProgress: 0 },
+      ];
+      const localOverlap = (['pad-a', 'pad-b'] as PadId[]).find(padId => {
+        const a = PAD_AREAS[padId];
+        const px = playerRef.current.x, py = playerRef.current.y;
+        const cx = Math.max(a.x, Math.min(px, a.x + a.width));
+        const cy = Math.max(a.y, Math.min(py, a.y + a.height));
+        return (px - cx) ** 2 + (py - cy) ** 2 <= AVATAR_RADIUS ** 2;
+      }) ?? null;
+      drawDuelPads({ ctx, padStates: padsToRender, localPlayerOverlap: localOverlap });
+    }
 
     // Shooter Zone
     drawShooterZone({
@@ -551,13 +556,13 @@ const VirtualWorld: React.FC = () => {
       ensureRemoteUser(user.userId, user.email);
       drawAvatar(ctx, user.x, user.y, user.color || CANVAS_THEME.secondaryDeep, user.name, false, getImage(user.userId));
       drawBubble(ctx, user.x, user.y, user.userId);
-      if (crown?.winnerId === user.userId) drawCrown(ctx, user.x, user.y);
+      if (FOOTBALL_DUEL_ENABLED && crown?.winnerId === user.userId) drawCrown(ctx, user.x, user.y);
     });
 
     // Local player
     drawAvatar(ctx, playerRef.current.x, playerRef.current.y, playerRef.current.color, playerRef.current.name, true, getImage(uid || ''));
     drawBubble(ctx, playerRef.current.x, playerRef.current.y, uid || 'me');
-    if (crown?.winnerId === uid) drawCrown(ctx, playerRef.current.x, playerRef.current.y);
+    if (FOOTBALL_DUEL_ENABLED && crown?.winnerId === uid) drawCrown(ctx, playerRef.current.x, playerRef.current.y);
 
     ctx.restore();
   };
@@ -808,7 +813,7 @@ const VirtualWorld: React.FC = () => {
   }
 
   // â”€â”€ Match screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  if (activeMatch) {
+  if (FOOTBALL_DUEL_ENABLED && activeMatch) {
     const localName = currentUser?.username || 'TÃº';
     return (
       <FootballDuelMatch

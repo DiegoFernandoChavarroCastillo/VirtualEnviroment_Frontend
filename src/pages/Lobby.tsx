@@ -1,27 +1,23 @@
 ﻿import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LogIn, UserPlus, LogOut, Gamepad2, Crosshair, Target, Zap, Clock, Trophy } from 'lucide-react'
+import {
+  LogIn,
+  UserPlus,
+  LogOut,
+  Gamepad2,
+  Crosshair,
+  Target,
+  Zap,
+  Trophy,
+  Sparkles,
+} from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { leaderboardService, type LeaderboardEntry } from '@/features/leaderboard/services/leaderboard.service'
 import Leaderboard from '@/features/leaderboard/components/Leaderboard'
-
-const AVATAR_COLORS = [
-  { name: 'Rojo', value: '#c0392b' },
-  { name: 'Naranja', value: '#e67e22' },
-  { name: 'Amarillo', value: '#f1c40f' },
-  { name: 'Verde', value: '#27ae60' },
-  { name: 'Turquesa', value: '#1abc9c' },
-  { name: 'Azul', value: '#2980b9' },
-  { name: 'Púrpura', value: '#8e44ad' },
-  { name: 'Rosa', value: '#e84393' },
-]
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import Starfield from '@/shared/components/Starfield'
+import NeonPanel from '@/shared/components/NeonPanel'
+import NeonButton from '@/shared/components/NeonButton'
 
 export default function Lobby() {
   const navigate = useNavigate()
@@ -32,7 +28,8 @@ export default function Lobby() {
   useEffect(() => {
     if (isAuthenticated && user) {
       setStatsLoading(true)
-      leaderboardService.getUserStats(user.username, 5)
+      leaderboardService
+        .getUserStats(user.username, 5)
         .then(setMyStats)
         .catch(() => setMyStats([]))
         .finally(() => setStatsLoading(false))
@@ -48,158 +45,268 @@ export default function Lobby() {
     await logout()
   }
 
-  const bestScore = myStats.length > 0 ? Math.max(...myStats.map(s => s.score)) : 0
+  const bestScore = myStats.length > 0 ? Math.max(...myStats.map((s) => s.score)) : 0
   const totalKills = myStats.reduce((sum, s) => sum + s.kills, 0)
-  const totalDeaths = myStats.reduce((sum, s) => sum + s.deaths, 0)
-  const avgAccuracy = myStats.length > 0
-    ? myStats.reduce((sum, s) => sum + s.accuracy, 0) / myStats.length
-    : 0
+  const avgAccuracy =
+    myStats.length > 0
+      ? myStats.reduce((sum, s) => sum + s.accuracy, 0) / myStats.length
+      : 0
   const totalMatches = myStats.length
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fdf2e9] via-white to-[#e8f8f5]">
-      <header className="px-6 py-4 flex items-center justify-between border-b border-white/30">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#e67e22] to-[#c0392b] rounded-xl flex items-center justify-center shadow-lg">
-            <Gamepad2 className="w-5 h-5 text-white" />
+    <div className="relative min-h-screen text-foreground overflow-hidden">
+      <Starfield />
+
+      <header className="relative z-10 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 border-b border-neon-cyan/20 backdrop-blur-md bg-space-900/40">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex items-center gap-2 sm:gap-3 min-w-0"
+        >
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-violet flex items-center justify-center shadow-glow-cyan">
+              <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-space-900" />
+            </div>
+            <div className="absolute -inset-1 rounded-xl bg-neon-cyan/30 blur-md -z-10 animate-pulse-glow" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Box.io</h1>
-        </div>
-        <div className="flex items-center gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-display font-black tracking-widest text-glow-cyan text-neon-cyan leading-none">
+              BOX.IO
+            </h1>
+            <p className="hidden sm:block text-[10px] uppercase tracking-[0.3em] text-neon-violet/80 text-glow-violet mt-1">
+              Multiplayer Arena
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex items-center gap-2 sm:gap-3 shrink-0"
+        >
           {isAuthenticated && user ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/60 border border-gray-200">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <NeonPanel
+                accent="violet"
+                className="flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full"
+              >
                 <div
-                  className="w-6 h-6 rounded-full border-2 border-white shadow"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white/30 shadow-glow-cyan shrink-0"
                   style={{ backgroundColor: user.avatarColor }}
                 />
-                <span className="text-sm font-medium text-gray-700">{user.username}</span>
-              </div>
-              <button
+                <span className="text-xs sm:text-sm font-medium text-foreground truncate max-w-[120px] sm:max-w-none">
+                  {user.username}
+                </span>
+              </NeonPanel>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleLogout}
-                className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                className="p-2 rounded-xl text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
                 title="Cerrar sesión"
               >
                 <LogOut size={18} />
-              </button>
+              </motion.button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link
-                to="/login"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-[#e67e22] border border-[#e67e22] hover:bg-[#e67e22]/5 transition-all"
-              >
-                <LogIn size={16} />
-                Entrar
+              <Link to="/login">
+                <NeonButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<LogIn size={16} />}
+                  className="hidden xs:inline-flex"
+                >
+                  Entrar
+                </NeonButton>
+                <NeonButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<LogIn size={16} />}
+                  className="xs:hidden"
+                  aria-label="Entrar"
+                />
               </Link>
-              <Link
-                to="/register"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-[#e67e22] to-[#c0392b] hover:from-[#d35400] hover:to-[#a93226] shadow-lg transition-all"
-              >
-                <UserPlus size={16} />
-                Registrarse
+              <Link to="/register">
+                <NeonButton
+                  variant="primary"
+                  size="sm"
+                  icon={<UserPlus size={16} />}
+                >
+                  <span className="hidden xs:inline">Registrarse</span>
+                  <span className="xs:hidden">Crear</span>
+                </NeonButton>
               </Link>
             </div>
           )}
-        </div>
+        </motion.div>
       </header>
 
-      <main className="p-6 lg:p-8 flex flex-col lg:flex-row gap-8 items-start justify-center max-w-6xl mx-auto">
+      <main className="relative z-10 p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch lg:items-start justify-center max-w-6xl mx-auto w-full">
         {isAuthenticated && user ? (
-          /* ── Logged-in user view ── */
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+          <NeonPanel
+            accent="cyan"
+            glow
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 space-y-8 shrink-0"
+            className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 shrink-0"
           >
             <div className="text-center space-y-3">
-              <div
-                className="w-20 h-20 mx-auto rounded-full border-4 border-white shadow-xl"
-                style={{ backgroundColor: user.avatarColor }}
-              />
-              <h2 className="text-2xl font-bold text-gray-800">{user.username}</h2>
-              <p className="text-gray-500 text-sm">Bienvenido de vuelta</p>
+              <motion.div
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 180, delay: 0.2 }}
+                className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto"
+              >
+                <div
+                  className="w-full h-full rounded-full border-4 border-white/20 shadow-glow-cyan"
+                  style={{ backgroundColor: user.avatarColor }}
+                />
+                <div className="absolute inset-0 rounded-full border border-neon-cyan animate-pulse-glow" />
+              </motion.div>
+              <h2 className="text-xl sm:text-2xl font-display font-bold tracking-wider text-glow-cyan truncate">
+                {user.username}
+              </h2>
+              <p className="text-neon-violet/80 text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] flex items-center justify-center gap-1.5">
+                <Sparkles size={12} className="text-neon-magenta" />
+                Welcome back, pilot
+              </p>
             </div>
 
             {statsLoading ? (
               <div className="flex justify-center py-6">
-                <div className="w-8 h-8 border-4 border-[#e67e22] border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
               </div>
             ) : myStats.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/60 rounded-2xl p-4 text-center border border-gray-100">
-                  <Trophy className="w-5 h-5 text-[#e67e22] mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-800">{bestScore}</p>
-                  <p className="text-xs text-gray-400">Mejor puntuación</p>
-                </div>
-                <div className="bg-white/60 rounded-2xl p-4 text-center border border-gray-100">
-                  <Crosshair className="w-5 h-5 text-[#e67e22] mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-800">{totalKills}</p>
-                  <p className="text-xs text-gray-400">Eliminaciones</p>
-                </div>
-                <div className="bg-white/60 rounded-2xl p-4 text-center border border-gray-100">
-                  <Target className="w-5 h-5 text-[#e67e22] mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-800">{avgAccuracy.toFixed(0)}%</p>
-                  <p className="text-xs text-gray-400">Precisión media</p>
-                </div>
-                <div className="bg-white/60 rounded-2xl p-4 text-center border border-gray-100">
-                  <Zap className="w-5 h-5 text-[#e67e22] mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-800">{totalMatches}</p>
-                  <p className="text-xs text-gray-400">Partidas</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <StatTile
+                  icon={<Trophy className="w-4 h-4" />}
+                  value={bestScore}
+                  label="Best score"
+                  accent="cyan"
+                />
+                <StatTile
+                  icon={<Crosshair className="w-4 h-4" />}
+                  value={totalKills}
+                  label="Kills"
+                  accent="violet"
+                />
+                <StatTile
+                  icon={<Target className="w-4 h-4" />}
+                  value={`${avgAccuracy.toFixed(0)}%`}
+                  label="Accuracy"
+                  accent="magenta"
+                />
+                <StatTile
+                  icon={<Zap className="w-4 h-4" />}
+                  value={totalMatches}
+                  label="Matches"
+                  accent="cyan"
+                />
               </div>
             ) : (
-              <p className="text-gray-400 text-sm text-center py-4">Aún no has jugado ninguna partida</p>
+              <div className="text-center py-4 space-y-1">
+                <p className="text-muted-foreground text-sm">Aún no has jugado</p>
+                <p className="text-neon-cyan/70 text-xs uppercase tracking-widest">
+                  Start your first mission
+                </p>
+              </div>
             )}
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <NeonButton
+              variant="primary"
+              size="lg"
+              fullWidth
               onClick={handleAuthenticatedEnter}
-              className="w-full py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-[#e67e22] to-[#c0392b] hover:from-[#d35400] hover:to-[#a93226] shadow-lg shadow-orange-200 transition-all"
+              icon={<Gamepad2 size={18} />}
             >
               Entrar al juego
-            </motion.button>
-          </motion.div>
+            </NeonButton>
+          </NeonPanel>
         ) : (
-          /* ── Public view (must sign in to play) ── */
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+          <NeonPanel
+            accent="cyan"
+            glow
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 space-y-8 shrink-0"
+            className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 shrink-0"
           >
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#e67e22] to-[#c0392b] rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                </svg>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-800">Box.io</h1>
-              <p className="text-gray-500 text-sm">Sala de juegos multijugador</p>
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                className="relative w-14 h-14 sm:w-16 sm:h-16 mx-auto"
+              >
+                <div className="w-full h-full rounded-2xl bg-gradient-to-br from-neon-cyan to-neon-violet flex items-center justify-center shadow-glow-cyan">
+                  <svg
+                    className="w-7 h-7 sm:w-8 sm:h-8 text-space-900"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+                    />
+                  </svg>
+                </div>
+                <div className="absolute -inset-2 rounded-2xl bg-neon-cyan/20 blur-xl -z-10" />
+              </motion.div>
+              <h1 className="text-3xl sm:text-4xl font-display font-black tracking-widest text-glow-cyan text-neon-cyan">
+                BOX.IO
+              </h1>
+              <p className="text-neon-violet text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.4em] text-glow-violet">
+                Multiplayer Arena
+              </p>
             </div>
 
-            <p className="text-center text-sm text-gray-500">
-              Inicia sesión o regístrate para acceder al mundo virtual.
+            <p className="text-center text-sm text-muted-foreground leading-relaxed">
+              Inicia sesión o regístrate para acceder al mundo virtual y competir con
+              pilotos de todo el mundo.
             </p>
 
-            <div className="flex flex-col gap-3">
-              <Link
-                to="/login"
-                className="w-full py-3.5 text-center rounded-xl font-semibold text-[#e67e22] border-2 border-[#e67e22] hover:bg-[#e67e22]/5 transition-all"
-              >
-                Entrar
+            <div className="flex flex-col gap-3 pt-1 sm:pt-2">
+              <Link to="/login" className="w-full">
+                <NeonButton variant="secondary" size="lg" fullWidth icon={<LogIn size={18} />}>
+                  Entrar
+                </NeonButton>
               </Link>
-              <Link
-                to="/register"
-                className="w-full py-3.5 text-center rounded-xl font-semibold text-white bg-gradient-to-r from-[#e67e22] to-[#c0392b] hover:from-[#d35400] hover:to-[#a93226] shadow-lg shadow-orange-200 transition-all"
-              >
-                Registrarse
+              <Link to="/register" className="w-full">
+                <NeonButton
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  icon={<UserPlus size={18} />}
+                >
+                  Registrarse
+                </NeonButton>
               </Link>
             </div>
-          </motion.div>
+
+            <div className="pt-1 sm:pt-2 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-muted-foreground/60">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-neon-cyan/30" />
+              <span>or</span>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-neon-violet/30" />
+            </div>
+
+            <Link
+              to="/"
+              className="block text-center text-xs uppercase tracking-[0.3em] text-muted-foreground hover:text-neon-cyan transition-colors"
+            >
+              Seguir como invitado →
+            </Link>
+          </NeonPanel>
         )}
 
         <motion.div
@@ -211,6 +318,45 @@ export default function Lobby() {
           <Leaderboard />
         </motion.div>
       </main>
+
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04] [background-image:repeating-linear-gradient(0deg,rgba(34,211,238,0.4)_0_1px,transparent_1px_3px)]" />
     </div>
+  )
+}
+
+interface StatTileProps {
+  icon: React.ReactNode
+  value: number | string
+  label: string
+  accent: 'cyan' | 'violet' | 'magenta'
+}
+
+function StatTile({ icon, value, label, accent }: StatTileProps) {
+  const colorClass =
+    accent === 'cyan'
+      ? 'text-neon-cyan'
+      : accent === 'violet'
+        ? 'text-neon-violet'
+        : 'text-neon-magenta'
+  return (
+    <motion.div
+      whileHover={{ scale: 1.04, y: -2 }}
+      className="relative bg-space-900/40 border border-border rounded-xl p-3 sm:p-4 text-center overflow-hidden group"
+    >
+      <div
+        className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+          accent === 'cyan'
+            ? 'bg-neon-cyan/5'
+            : accent === 'violet'
+              ? 'bg-neon-violet/5'
+              : 'bg-neon-magenta/5'
+        }`}
+      />
+      <div className={`relative ${colorClass} mx-auto mb-1 flex justify-center`}>{icon}</div>
+      <p className="relative text-xl sm:text-2xl font-display font-bold text-foreground">{value}</p>
+      <p className="relative text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">
+        {label}
+      </p>
+    </motion.div>
   )
 }

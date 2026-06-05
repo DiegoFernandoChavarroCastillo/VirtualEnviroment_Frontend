@@ -1,19 +1,22 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { UserPlus, Eye, EyeOff } from 'lucide-react'
+import { UserPlus, Eye, EyeOff, Gamepad2, ArrowLeft, Check } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { getPasswordStrength } from '@/shared/lib/utils'
+import Starfield from '@/shared/components/Starfield'
+import NeonPanel from '@/shared/components/NeonPanel'
+import NeonButton from '@/shared/components/NeonButton'
 
 const AVATAR_COLORS = [
-  { name: 'Rojo', value: '#c0392b' },
-  { name: 'Naranja', value: '#e67e22' },
-  { name: 'Amarillo', value: '#f1c40f' },
-  { name: 'Verde', value: '#27ae60' },
-  { name: 'Turquesa', value: '#1abc9c' },
-  { name: 'Azul', value: '#2980b9' },
-  { name: 'Púrpura', value: '#8e44ad' },
-  { name: 'Rosa', value: '#e84393' },
+  { name: 'Cyan', value: '#22d3ee' },
+  { name: 'Violet', value: '#a855f7' },
+  { name: 'Magenta', value: '#ec4899' },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Emerald', value: '#10b981' },
+  { name: 'Amber', value: '#f59e0b' },
+  { name: 'Rose', value: '#f43f5e' },
+  { name: 'Slate', value: '#94a3b8' },
 ]
 
 export default function Register() {
@@ -24,7 +27,7 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[3].value)
+  const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0].value)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -63,7 +66,12 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      await register({ username: name, email: mail, password, avatarColor: selectedColor })
+      await register({
+        username: name,
+        email: mail,
+        password,
+        avatarColor: selectedColor,
+      })
       navigate('/')
     } catch (err: any) {
       setError(err.message || 'Error al registrarse')
@@ -73,149 +81,221 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fdf2e9] via-white to-[#e8f8f5] flex items-center justify-center p-4">
+    <div className="relative min-h-screen text-foreground flex items-start sm:items-center justify-center p-3 sm:p-4 py-6 sm:py-10">
+      <Starfield />
+
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 space-y-8"
+        className="relative z-10 w-full max-w-md"
       >
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#e67e22] to-[#c0392b] rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200">
-            <UserPlus className="w-8 h-8 text-white" />
+        <NeonPanel accent="violet" glow className="p-5 sm:p-8 space-y-4 sm:space-y-6">
+          <div className="text-center space-y-2.5 sm:space-y-3">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative w-12 h-12 sm:w-16 sm:h-16 mx-auto"
+            >
+              <div className="w-full h-full rounded-2xl bg-gradient-to-br from-neon-violet to-neon-magenta flex items-center justify-center shadow-glow-violet">
+                <UserPlus className="w-5 h-5 sm:w-7 sm:h-7 text-space-900" />
+              </div>
+              <div className="absolute -inset-2 rounded-2xl bg-neon-violet/20 blur-xl -z-10" />
+            </motion.div>
+            <h1 className="text-xl sm:text-3xl font-display font-black tracking-widest text-glow-violet text-neon-violet">
+              BOX.IO
+            </h1>
+            <p className="text-neon-cyan text-[9px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.4em] text-glow-cyan">
+              Crear cuenta
+            </p>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Box.io</h1>
-          <p className="text-gray-500 text-sm">Crear cuenta</p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Usuario</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setError('') }}
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <Field
+              label="Usuario"
               placeholder="Min. 3 caracteres"
+              value={username}
+              onChange={setUsername}
               maxLength={30}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
               autoFocus
             />
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Correo electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError('') }}
+            <Field
+              label="Correo electrónico"
               placeholder="tu@correo.com"
+              value={email}
+              onChange={setEmail}
+              type="email"
               maxLength={254}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
             />
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Contraseña</label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError('') }}
-                placeholder="Min. 8 caracteres"
-                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {password && (
-              <div className="mt-1.5">
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-colors ${
-                        i <= pwStrength.level ? pwStrength.colorClass : 'bg-gray-200'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-xs text-gray-400 mt-1">{pwStrength.label}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Confirmar contraseña</label>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setError('') }}
-              placeholder="Repite la contraseña"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white/50 focus:outline-none focus:ring-2 focus:ring-[#e67e22]/40 focus:border-[#e67e22] transition-all text-gray-800 placeholder:text-gray-400"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Color de avatar</label>
-            <div className="grid grid-cols-4 gap-3">
-              {AVATAR_COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setSelectedColor(c.value)}
-                  className={`w-full aspect-square rounded-xl border-2 transition-all ${
-                    selectedColor === c.value ? 'border-gray-800 scale-110 shadow-lg' : 'border-transparent hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: c.value }}
-                  title={c.name}
-                  aria-label={c.name}
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-neon-violet/80">
+                Contraseña
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min. 8 caracteres"
+                  maxLength={72}
+                  className="w-full px-4 py-3 pr-12 text-base rounded-xl bg-space-900/60 border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-neon-violet focus:shadow-glow-violet transition-all"
                 />
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-neon-violet transition-colors p-1"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {password && (
+                <div className="mt-1.5 space-y-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-all ${
+                          i <= pwStrength.level
+                            ? pwStrength.level <= 1
+                              ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                              : pwStrength.level === 2
+                                ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]'
+                                : 'bg-neon-cyan shadow-glow-cyan'
+                            : 'bg-space-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {pwStrength.label}
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
 
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <Field
+              label="Confirmar contraseña"
+              placeholder="Repite la contraseña"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              type={showPassword ? 'text' : 'password'}
+              maxLength={72}
+            />
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-[#e67e22] to-[#c0392b] hover:from-[#d35400] hover:to-[#a93226] shadow-lg shadow-orange-200 transition-all disabled:opacity-50"
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-neon-magenta/80">
+                Color de avatar
+              </label>
+              <div className="grid grid-cols-4 xs:grid-cols-8 gap-2">
+                {AVATAR_COLORS.map((c) => (
+                  <motion.button
+                    key={c.value}
+                    type="button"
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setSelectedColor(c.value)}
+                    className={`relative aspect-square rounded-lg border-2 transition-all ${
+                      selectedColor === c.value
+                        ? 'border-white shadow-glow-cyan'
+                        : 'border-transparent hover:border-white/40'
+                    }`}
+                    style={{ backgroundColor: c.value }}
+                    title={c.name}
+                    aria-label={c.name}
+                  >
+                    {selectedColor === c.value && (
+                      <Check
+                        className="absolute inset-0 m-auto w-3 h-3 text-space-900"
+                        strokeWidth={4}
+                      />
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/30 rounded-lg py-2"
+              >
+                {error}
+              </motion.p>
+            )}
+
+            <NeonButton
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+              icon={<Gamepad2 size={18} />}
+              className="mt-1 sm:mt-2"
+            >
+              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+            </NeonButton>
+          </form>
+
+          <p className="text-center text-sm text-muted-foreground">
+            ¿Ya tienes cuenta?{' '}
+            <Link
+              to="/login"
+              className="text-neon-violet hover:text-glow-violet font-semibold transition-all"
+            >
+              Inicia sesión
+            </Link>
+          </p>
+
+          <Link
+            to="/"
+            className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] text-muted-foreground hover:text-neon-cyan transition-colors"
           >
-            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
-          </motion.button>
-        </form>
-
-        <p className="text-center text-sm text-gray-500">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="text-[#e67e22] hover:text-[#d35400] font-semibold hover:underline">
-            Inicia sesión
+            <ArrowLeft size={12} /> Volver al lobby
           </Link>
-        </p>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-gray-200" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white/80 px-3 text-gray-400">o</span>
-          </div>
-        </div>
-
-        <Link
-          to="/"
-          className="block w-full py-3 text-center rounded-xl font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all"
-        >
-          Seguir como invitado
-        </Link>
+        </NeonPanel>
       </motion.div>
+    </div>
+  )
+}
+
+interface FieldProps {
+  label: string
+  placeholder: string
+  value: string
+  onChange: (v: string) => void
+  type?: string
+  maxLength?: number
+  autoFocus?: boolean
+}
+
+function Field({
+  label,
+  placeholder,
+  value,
+  onChange,
+  type = 'text',
+  maxLength,
+  autoFocus,
+}: FieldProps) {
+  return (
+    <div className="space-y-1.5 sm:space-y-2">
+      <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-neon-cyan/80">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        autoFocus={autoFocus}
+        className="w-full px-4 py-3 text-base rounded-xl bg-space-900/60 border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-neon-cyan focus:shadow-glow-cyan transition-all"
+      />
     </div>
   )
 }
