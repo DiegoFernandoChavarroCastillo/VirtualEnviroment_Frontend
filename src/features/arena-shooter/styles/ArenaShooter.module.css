@@ -13,7 +13,69 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
+/* ── Wrapper del canvas ──────────────────────────────────────────────────── */
+
+.canvasWrapper {
+  position: relative;
+  flex-shrink: 1;
+  flex-grow: 0;
+  /* El canvas no puede ser más alto que la pantalla */
+  max-height: 100vh;
+  /* Mantener aspect ratio 4:3 (800×600) */
+  aspect-ratio: 4 / 3;
+  /* No superar el ancho disponible (pantalla - scoreboard) */
+  max-width: calc(100vw - 220px);
+}
+
+.gameCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  background: #000;
+}
+
+/* En móvil landscape: canvas limitado por altura para dejar espacio a controles */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .canvasWrapper {
+    /* Dejar 120px abajo para los controles táctiles */
+    max-height: calc(100vh - 120px);
+    max-width: calc(100vw - 160px);
+  }
+}
+
+.sideScoreboard {
+  width: 200px;
+  flex-shrink: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: center;
+}
+
+.scoreboardTitle {
+  font-size: 10px;
+  margin: 0 0 6px 0;
+  opacity: 0.5;
+  letter-spacing: 2px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Stats del jugador local dentro del panel de scoreboard */
+.localStatsPanel {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .leaderboard {
+  /* kept for backwards compat — no longer used as overlay */
   position: absolute;
   top: 56px;
   right: 20px;
@@ -33,7 +95,7 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
   transition: all 0.3s ease;
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -43,7 +105,7 @@
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 170px;
+  max-width: 130px;
 }
 
 .leaderboardEntry.active {
@@ -64,17 +126,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 50px;
+  min-width: 40px;
 }
 
 .statValue {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   text-shadow: 0 0 10px currentColor;
 }
 
 .statLabel {
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0.7;
@@ -82,20 +144,21 @@
 
 .killFeed {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 12px;
+  left: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   pointer-events: none;
   z-index: 50;
+  max-width: 180px;
 }
 
 .killEntry {
   background: rgba(0, 0, 0, 0.5);
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 12px;
   color: #fff;
   border-left: 3px solid #e74c3c;
   animation: slideIn 0.3s ease-out;
@@ -107,11 +170,11 @@
 }
 
 .hitVignette {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   box-shadow: inset 0 0 100px rgba(231, 76, 60, 0.4);
-  z-index: 60;
+  z-index: 200;
   opacity: 0;
   transition: opacity 0.1s;
 }
@@ -121,13 +184,13 @@
 }
 
 .gameOverOverlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 300;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
 }
@@ -148,46 +211,250 @@
   transform: scale(1.05);
 }
 
-/* --- RESPONSIVIDAD --- */
+/* ── RESPONSIVIDAD ───────────────────────────────────────────────────────── */
+
+/* Pantalla de aviso de orientación (móvil en portrait) */
+.rotateOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(8px);
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.rotateIcon {
+  font-size: 64px;
+  animation: rotateHint 2s ease-in-out infinite;
+  color: #f1c40f;
+}
+
+@keyframes rotateHint {
+  0%, 100% { transform: rotate(0deg); }
+  50%       { transform: rotate(90deg); }
+}
+
+.rotateText {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.rotateSubtext {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
 @media (max-width: 768px) {
-  .leaderboard {
-    width: 180px;
-    top: 52px;
-    right: 10px;
-    padding: 8px;
-    gap: 4px;
+  .killFeed {
+    top: 8px;
+    left: 8px;
+    max-width: 140px;
   }
-  
+
+  .killEntry {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
   .leaderboardEntry {
     padding: 4px 8px;
     font-size: 11px;
   }
 
-  .leaderboardEntry span:first-child {
-    max-width: 110px;
-  }
-
-  .statsHUD {
-    bottom: 10px;
-    left: 10px;
-    gap: 12px;
-  }
-
   .statValue {
-    font-size: 18px;
+    font-size: 16px;
   }
-  
+
   .statLabel {
     font-size: 8px;
-  }
-
-  .killFeed {
-    top: auto;
-    bottom: 60px;
-    left: 10px;
   }
 
   .gameOverOverlay h1 {
     font-size: 32px !important;
   }
+
+  /* En móvil landscape el scoreboard lateral se hace más compacto */
+  .sideScoreboard {
+    width: 130px;
+    padding: 8px;
+    gap: 3px;
+  }
+
+  .scoreboardTitle {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+
+  .leaderboardEntry {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .leaderboardEntry span:first-child {
+    max-width: 70px;
+  }
+
+  .localStatsPanel {
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  .statValue {
+    font-size: 15px;
+  }
+
+  .statLabel {
+    font-size: 7px;
+  }
 }
+
+/* ─── Weapon HUD ─────────────────────────────────────────────────────────────── */
+
+.weaponHUD {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.3s ease;
+  animation: weaponHUDIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.weaponHUD.hidden {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.weaponHUDIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.weaponHUDInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weaponHUDName {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.weaponHUDAmmo {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.ammoPip {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  transition: background 0.2s;
+}
+
+/* ─── Variante Shotgun ───────────────────────────────────────────────────────── */
+
+.weaponHUD.shotgun {
+  border-color: rgba(243, 156, 18, 0.4);
+  box-shadow: 0 2px 12px rgba(243, 156, 18, 0.2), 0 0 0 1px rgba(243, 156, 18, 0.1);
+}
+
+.weaponHUD.shotgun .weaponHUDName {
+  color: #f39c12;
+  text-shadow: 0 0 6px rgba(243, 156, 18, 0.6);
+}
+
+.weaponHUD.shotgun .ammoPip {
+  background: #f39c12;
+  box-shadow: 0 0 3px rgba(243, 156, 18, 0.6);
+}
+
+.weaponHUD.shotgun .ammoPip.empty {
+  background: rgba(243, 156, 18, 0.2);
+  box-shadow: none;
+}
+
+/* ─── Variante Rocket ────────────────────────────────────────────────────────── */
+
+.weaponHUD.rocket {
+  border-color: rgba(231, 76, 60, 0.5);
+  box-shadow: 0 2px 12px rgba(231, 76, 60, 0.3), 0 0 0 1px rgba(231, 76, 60, 0.15);
+  animation: weaponHUDIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), rocketGlow 1.5s ease-in-out infinite;
+}
+
+.weaponHUD.rocket .weaponHUDName {
+  color: #e74c3c;
+  text-shadow: 0 0 8px rgba(231, 76, 60, 0.8);
+}
+
+.weaponHUD.rocket .ammoPip {
+  width: 6px;
+  height: 6px;
+  background: #e74c3c;
+  box-shadow: 0 0 4px rgba(231, 76, 60, 0.8);
+}
+
+.weaponHUD.rocket .ammoPip.empty {
+  background: rgba(231, 76, 60, 0.15);
+  box-shadow: none;
+}
+
+/* ─── Animaciones ────────────────────────────────────────────────────────────── */
+
+@keyframes weaponHUDIn {
+  from { opacity: 0; transform: scale(0.85) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes rocketGlow {
+  0%, 100% { box-shadow: 0 2px 12px rgba(231, 76, 60, 0.3), 0 0 0 1px rgba(231, 76, 60, 0.15); }
+  50%       { box-shadow: 0 2px 20px rgba(231, 76, 60, 0.55), 0 0 0 1px rgba(231, 76, 60, 0.3); }
+}
+
+@media (max-width: 768px) {
+  .weaponHUD {
+    bottom: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    gap: 5px;
+  }
+
+  .weaponHUDIcon {
+    font-size: 12px;
+  }
+
+  .weaponHUDName {
+    font-size: 7px;
+  }
+
+  .ammoPip {
+    width: 4px;
+    height: 4px;
+  }
+}
+

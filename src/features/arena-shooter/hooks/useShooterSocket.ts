@@ -9,6 +9,8 @@ import {
   PlayerLeftPayload,
   ReturnPayload,
   RoomStatePayload,
+  RocketExplosionPayload,
+  ShieldAbsorbedPayload,
 } from '../types/arena-shooter.types';
 import { realTimeURL } from '@/shared/lib/api';
 import { useAuth } from '@/features/auth/contexts/AuthContext';
@@ -29,6 +31,8 @@ interface UseShooterSocketProps {
   onPlayerJoined?: (payload: { userId: string; name: string }) => void;
   onLastPlayerStanding?: (payload: { userId: string }) => void;
   onReturnToVirtualWorld?: (payload: ReturnPayload) => void;
+  onRocketExplosion?: (payload: RocketExplosionPayload) => void;
+  onShieldAbsorbed?: (payload: ShieldAbsorbedPayload) => void;
   onRoomFull?: () => void;
   onConnectionLost?: () => void;
   onReconnected?: () => void;
@@ -45,6 +49,8 @@ export const useShooterSocket = ({
   onPlayerJoined,
   onLastPlayerStanding,
   onReturnToVirtualWorld,
+  onRocketExplosion,
+  onShieldAbsorbed,
   onRoomFull,
   onConnectionLost,
   onReconnected,
@@ -68,6 +74,8 @@ export const useShooterSocket = ({
     onPlayerJoined,
     onLastPlayerStanding,
     onReturnToVirtualWorld,
+    onRocketExplosion,
+    onShieldAbsorbed,
     onRoomFull,
     onConnectionLost,
     onReconnected,
@@ -83,6 +91,7 @@ export const useShooterSocket = ({
       onPlayerJoined,
       onLastPlayerStanding,
       onReturnToVirtualWorld,
+      onRocketExplosion,
       onRoomFull,
       onConnectionLost,
       onReconnected,
@@ -90,7 +99,7 @@ export const useShooterSocket = ({
   }, [
     onSnapshot, onRoomState, onPlayerHit, onPlayerEliminated,
     onPlayerLeft, onPlayerJoined, onLastPlayerStanding,
-    onReturnToVirtualWorld, onRoomFull, onConnectionLost, onReconnected,
+    onReturnToVirtualWorld, onRocketExplosion, onShieldAbsorbed, onRoomFull, onConnectionLost, onReconnected,
   ]);
 
   useEffect(() => {
@@ -163,6 +172,8 @@ export const useShooterSocket = ({
     socket.on('playerJoined', (p: { userId: string; name: string }) => callbacks.current.onPlayerJoined?.(p));
     socket.on('roomState', (s: RoomStatePayload) => callbacks.current.onRoomState?.(s));
     socket.on('lastPlayerStanding', (p: { userId: string }) => callbacks.current.onLastPlayerStanding?.(p));
+    socket.on('rocketExplosion', (p: RocketExplosionPayload) => callbacks.current.onRocketExplosion?.(p));
+    socket.on('shieldAbsorbed', (p: ShieldAbsorbedPayload) => callbacks.current.onShieldAbsorbed?.(p));
     socket.on('returnToVirtualWorld', (p: ReturnPayload) => {
       intentionalReturn = true;
       callbacks.current.onReturnToVirtualWorld?.(p);

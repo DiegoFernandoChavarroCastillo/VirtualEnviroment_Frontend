@@ -10,6 +10,43 @@ export interface PhysicsBody extends Vec2 {
   vy: number;
 }
 
+// ─── Armas especiales ─────────────────────────────────────────────────────────
+
+/** Tipos de arma disponibles */
+export type WeaponType = 'normal' | 'shotgun' | 'rocket';
+
+/** Balas de escopeta por recarga */
+export const SHOTGUN_AMMO = 6;
+/** Número de pellets por disparo de escopeta */
+export const SHOTGUN_PELLETS = 3;
+/** Dispersión angular por pellet (radianes) */
+export const SHOTGUN_SPREAD = 0.25;
+/** Cooldown de disparo de escopeta en ms (1 disparo/segundo) */
+export const SHOTGUN_FIRE_RATE_MS = 1000;
+
+/** Número de cohetes por recarga */
+export const ROCKET_AMMO = 3;
+/** Radio de explosión del cohete en píxeles */
+export const ROCKET_EXPLOSION_RADIUS = 120;
+
+/** Duración del escudo en milisegundos */
+export const SHIELD_DURATION_MS = 8_000;
+
+/**
+ * 8 posiciones pre-definidas de spawn de cajas de pickup en el mapa.
+ * Distribuidas en zonas abiertas, alejadas de estructuras y bordes.
+ */
+export const PICKUP_SPAWN_POSITIONS: ReadonlyArray<{ x: number; y: number }> = [
+  { x: 400,  y: 200  },  // cuadrante superior-izquierdo
+  { x: 1200, y: 200  },  // cuadrante superior-derecho
+  { x: 400,  y: 1000 },  // cuadrante inferior-izquierdo
+  { x: 1200, y: 1000 },  // cuadrante inferior-derecho
+  { x: 800,  y: 350  },  // centro-norte
+  { x: 800,  y: 850  },  // centro-sur
+  { x: 250,  y: 600  },  // centro-oeste
+  { x: 1350, y: 600  },  // centro-este
+] as const;
+
 // ─── Jugador en la arena ──────────────────────────────────────────────────────
 
 export interface ShooterPlayerInfo {
@@ -20,13 +57,18 @@ export interface ShooterPlayerInfo {
   deaths: number;
 }
 
-export interface ShooterPlayerState extends ShooterPlayerInfo, PhysicsBody {}
+export interface ShooterPlayerState extends ShooterPlayerInfo, PhysicsBody {
+  /** true mientras el escudo esté activo */
+  shielded?: boolean;
+}
 
 // ─── Proyectil ────────────────────────────────────────────────────────────────
 
 export interface Projectile extends PhysicsBody {
   id: string;       // uuid
   ownerId: string;  // userId del disparador
+  /** Tipo de arma que lo generó; usado para el renderer */
+  weaponType?: WeaponType;
 }
 
 // ─── Estructura de cobertura ──────────────────────────────────────────────────
@@ -53,7 +95,7 @@ export interface ShooterSnapshot {
 
 // ─── Input (cliente → servidor) ──────────────────────────────────────────────
 
-export type InputAction = 'move' | 'shoot';
+export type InputAction = 'move' | 'shoot' | 'activateShield';
 
 export interface ShooterInput {
   action: InputAction;
@@ -62,6 +104,8 @@ export interface ShooterInput {
   /** Dirección de apuntado (Fase 3: mouse) */
   aimDx?: number;
   aimDy?: number;
+  /** Tipo de arma con la que se dispara (default: 'normal') */
+  weaponType?: WeaponType;
 }
 
 // ─── Payloads de eventos ──────────────────────────────────────────────────────
@@ -92,6 +136,18 @@ export interface RoomStatePayload {
 export interface ReturnPayload {
   spawnX: number;
   spawnY: number;
+}
+
+/** Payload del evento rocketExplosion emitido por el servidor */
+export interface RocketExplosionPayload {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+/** Emitido al cliente cuando el escudo absorbe un impacto (sin restar vida) */
+export interface ShieldAbsorbedPayload {
+  victimId: string;
 }
 
 // ─── Props del componente principal ──────────────────────────────────────────
