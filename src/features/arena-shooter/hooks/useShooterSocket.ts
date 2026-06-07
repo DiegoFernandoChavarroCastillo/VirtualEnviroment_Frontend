@@ -11,9 +11,11 @@ import {
   RoomStatePayload,
   RocketExplosionPayload,
   ShieldAbsorbedPayload,
+  GameConfig,
 } from '../types/arena-shooter.types';
 import { realTimeURL } from '@/shared/lib/api';
 import { useAuth } from '@/features/auth/contexts/AuthContext';
+import { setGameConfig } from '../utils/gameConfigStore';
 
 const REALTIME_URL = import.meta.env.VITE_REALTIME_URL || realTimeURL;
 const RECONNECT_TIMEOUT_MS = 10000;
@@ -63,6 +65,7 @@ export const useShooterSocket = ({
 
   const lastEmitMoveRef = useRef<number>(0);
   const lastEmitShootRef = useRef<number>(0);
+  const gameConfigRef = useRef<GameConfig | null>(null);
 
   // Use refs for callbacks to avoid stale closures
   const callbacks = useRef({
@@ -180,6 +183,11 @@ export const useShooterSocket = ({
     });
     socket.on('roomFull', () => callbacks.current.onRoomFull?.());
 
+    socket.on('gameConfig', (config: GameConfig) => {
+      gameConfigRef.current = config;
+      setGameConfig(config);
+    });
+
     return () => {
       intentionalReturn = true; // Mark as intentional before cleanup disconnect
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
@@ -200,5 +208,5 @@ export const useShooterSocket = ({
     socketRef.current?.emit('playerInput', input);
   }, []);
 
-  return { isConnected, isReconnecting, emitPlayerInput };
+  return { isConnected, isReconnecting, emitPlayerInput, gameConfig: gameConfigRef };
 };

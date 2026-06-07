@@ -1,11 +1,9 @@
 import { useRef, useCallback } from 'react';
 import {
   WeaponType,
-  SHOTGUN_AMMO,
-  SHOTGUN_FIRE_RATE_MS,
-  ROCKET_AMMO,
   PICKUP_SPAWN_POSITIONS,
 } from '../types/arena-shooter.types';
+import { getGameConfig } from '../utils/gameConfigStore';
 import { CanvasIconPaths, drawGameIcon } from '@/shared/icons/canvasIcons';
 
 // ─── Constantes internas ─────────────────────────────────────────────────────
@@ -128,9 +126,12 @@ export function useWeaponPickups(): UseWeaponPickupsReturn {
       }
 
       // Equipar arma
+      const cfg = getGameConfig();
+      const shotgunAmmo = cfg?.weapons.shotgun?.ammo ?? 6;
+      const rocketAmmo = cfg?.weapons.rocket?.ammo ?? 3;
       weaponRef.current = {
         type: pickedType,
-        ammo: pickedType === 'shotgun' ? SHOTGUN_AMMO : ROCKET_AMMO,
+        ammo: pickedType === 'shotgun' ? (shotgunAmmo as number) : (rocketAmmo as number),
         lastShotTime: 0,
       };
 
@@ -153,8 +154,11 @@ export function useWeaponPickups(): UseWeaponPickupsReturn {
 
     // Rate limit del cliente para escopeta
     if (weapon.type === 'shotgun') {
+      const cfg = getGameConfig();
+      const shotgunFireRate = cfg?.weapons.shotgun?.fireRate ?? 1;
+      const shotgunCooldownMs = shotgunFireRate > 0 ? 1000 / shotgunFireRate : 1000;
       const now = Date.now();
-      if (now - weapon.lastShotTime < SHOTGUN_FIRE_RATE_MS) return false;
+      if (now - weapon.lastShotTime < shotgunCooldownMs) return false;
       weapon.lastShotTime = now;
     }
 

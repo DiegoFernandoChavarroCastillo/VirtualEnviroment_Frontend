@@ -11,10 +11,6 @@ import { secureRandom, generateSecureId } from '@/shared/utils/secureRandom';
 import { Sbed, Lorc, Delapouite } from '@/shared/icons/gameIcons';
 import styles from '../styles/ArenaShooter.module.css';
 import {
-  ARENA_WIDTH,
-  ARENA_HEIGHT,
-  PLAYER_RADIUS,
-  PROJECTILE_RADIUS,
   CoverStructure,
   ShooterPlayerInfo,
   ShooterSnapshot,
@@ -25,8 +21,11 @@ import {
   RocketExplosionPayload,
   ShieldAbsorbedPayload,
   WeaponType,
+  ArenaConfig,
 } from '../types/arena-shooter.types';
 import { getRandomSpawnPosition } from '@/shared/utils/spawnPosition';
+import { VirtualJoystick } from '@/shared/components/VirtualJoystick';
+import { getGameConfig } from '../utils/gameConfigStore';
 
 interface ArenaShooterProps {
   roomId: string;
@@ -64,12 +63,21 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
   const VIEWPORT_W = 800;
   const VIEWPORT_H = 600;
 
+  const configRef = useRef<ArenaConfig | null>(null);
+  const cfg = getGameConfig();
+  if (cfg) configRef.current = cfg.arenaConfig;
+  const arenaConfig = configRef.current;
+  const arenaW = arenaConfig?.arena.width ?? 1600;
+  const arenaH = arenaConfig?.arena.height ?? 1200;
+  const playerRadius = arenaConfig?.player.radius ?? 20;
+  const projectileRadius = arenaConfig?.projectile.radius ?? 6;
+
   const { pushSnapshot, getInterpolatedPlayer, getInterpolatedProjectiles, getLatestPlayers } =
     useShooterSnapshot();
 
   const { getLocalPlayerPos, getLastDirection, applyInput, stepPhysics, reconcile } = useShooterPhysics({
-    initialX: ARENA_WIDTH / 2,
-    initialY: ARENA_HEIGHT / 2,
+    initialX: arenaW / 2,
+    initialY: arenaH / 2,
     structuresRef,
   });
 
@@ -451,8 +459,8 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     const localPos = getLocalPlayerPos();
 
     // Update camera (centered on player, clamped to map)
-    const camX = Math.max(0, Math.min(ARENA_WIDTH - VIEWPORT_W, localPos.x - VIEWPORT_W / 2));
-    const camY = Math.max(0, Math.min(ARENA_HEIGHT - VIEWPORT_H, localPos.y - VIEWPORT_H / 2));
+    const camX = Math.max(0, Math.min(arenaW - VIEWPORT_W, localPos.x - VIEWPORT_W / 2));
+    const camY = Math.max(0, Math.min(arenaH - VIEWPORT_H, localPos.y - VIEWPORT_H / 2));
     cameraRef.current = { x: camX, y: camY };
 
     ctx.save();
@@ -520,7 +528,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
 
       const isRocket = proj.weaponType === 'rocket';
       const isShotgun = proj.weaponType === 'shotgun';
-      const radius = isRocket ? PROJECTILE_RADIUS * 1.5 : PROJECTILE_RADIUS;
+      const radius = isRocket ? projectileRadius * 1.5 : projectileRadius;
 
       if (isRocket) {
         const angle = Math.atan2(proj.vy, proj.vx);
@@ -578,7 +586,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     // Shield Aura
     if (isShielded) {
       ctx.beginPath();
-      ctx.arc(x, y, PLAYER_RADIUS + 8, 0, Math.PI * 2);
+      ctx.arc(x, y, playerRadius + 8, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(52, 152, 219, 0.8)';
@@ -590,7 +598,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     }
 
     ctx.beginPath();
-    ctx.arc(x, y, PLAYER_RADIUS, 0, Math.PI * 2);
+    ctx.arc(x, y, playerRadius, 0, Math.PI * 2);
     ctx.fillStyle = isLocal ? '#f1c40f' : '#2980b9';
     ctx.shadowBlur = 15;
     ctx.shadowColor = isLocal ? '#f1c40f' : '#3498db';
@@ -604,7 +612,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px "DM Sans", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(displayName, x, y - PLAYER_RADIUS - 10);
+    ctx.fillText(displayName, x, y - playerRadius - 10);
     ctx.restore();
   };
 
@@ -744,7 +752,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         <>
           {/* Joystick — esquina inferior izquierda de la pantalla */}
           <div style={{ position: 'fixed', bottom: '24px', left: '24px', zIndex: 200, touchAction: 'none' }}>
-            <DuelJoystick onMove={(dx, dy) => setMobileMove({ dx, dy })} />
+            <VirtualJoystick onMove={(dx, dy) => setMobileMove({ dx, dy })} />
           </div>
           {/* Botón FUEGO — esquina inferior derecha de la pantalla, antes del scoreboard */}
           <div style={{ position: 'fixed', bottom: '24px', right: '180px', zIndex: 200 }}>
@@ -813,96 +821,5 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
   );
 };
 
-// ─── Joystick virtual ────────────────────────────────────────────────────────
-
-const JOY_RADIUS = 56;
-const JOY_KNOB = 24;
-
-const DuelJoystick: React.FC<{ onMove: (dx: number, dy: number) => void }> = ({ onMove }) => {
-  const baseRef = useRef<HTMLDivElement>(null);
-  const knobRef = useRef<HTMLDivElement>(null);
-  const activeId = useRef<number | null>(null);
-
-  const calc = (cx: number, cy: number, clientX: number, clientY: number) => {
-    const rawDx = clientX - cx;
-    const rawDy = clientY - cy;
-    const dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    const max = JOY_RADIUS - JOY_KNOB;
-    const clamped = Math.min(dist, max);
-    const angle = Math.atan2(rawDy, rawDx);
-    return {
-      dx: dist > 0 ? (Math.cos(angle) * clamped) / max : 0,
-      dy: dist > 0 ? (Math.sin(angle) * clamped) / max : 0,
-      kx: Math.cos(angle) * clamped,
-      ky: Math.sin(angle) * clamped,
-    };
-  };
-
-  const setKnob = (kx: number, ky: number) => {
-    if (knobRef.current) knobRef.current.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (activeId.current !== null) return;
-    const t = e.changedTouches[0];
-    activeId.current = t.identifier;
-    const rect = baseRef.current!.getBoundingClientRect();
-    const { dx, dy, kx, ky } = calc(rect.left + rect.width / 2, rect.top + rect.height / 2, t.clientX, t.clientY);
-    setKnob(kx, ky);
-    onMove(dx, dy);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = Array.from(e.changedTouches).find(x => x.identifier === activeId.current);
-    if (!t) return;
-    e.preventDefault();
-    const rect = baseRef.current!.getBoundingClientRect();
-    const { dx, dy, kx, ky } = calc(rect.left + rect.width / 2, rect.top + rect.height / 2, t.clientX, t.clientY);
-    setKnob(kx, ky);
-    onMove(dx, dy);
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!Array.from(e.changedTouches).find(x => x.identifier === activeId.current)) return;
-    activeId.current = null;
-    setKnob(0, 0);
-    onMove(0, 0);
-  };
-
-  return (
-    <div
-      ref={baseRef}
-      style={{
-        width: JOY_RADIUS * 2,
-        height: JOY_RADIUS * 2,
-        borderRadius: '50%',
-        background: 'rgba(255,255,255,0.12)',
-        border: '2px solid rgba(255,255,255,0.25)',
-        position: 'relative',
-        touchAction: 'none',
-      }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
-    >
-      <div
-        ref={knobRef}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: JOY_KNOB * 2,
-          height: JOY_KNOB * 2,
-          borderRadius: '50%',
-          background: 'rgba(255,255,255,0.9)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          transform: 'translate(-50%, -50%)',
-          pointerEvents: 'none',
-        }}
-      />
-    </div>
-  );
-};
 
 export default ArenaShooter;

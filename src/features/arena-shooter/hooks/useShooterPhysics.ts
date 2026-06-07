@@ -4,13 +4,8 @@ import {
   ShooterInput,
   CoverStructure,
   lerp,
-  PLAYER_SPEED,
-  ARENA_WIDTH,
-  ARENA_HEIGHT,
-  PLAYER_RADIUS,
-  RECONCILE_THRESHOLD,
-  CORRECTION_FRAMES,
 } from '../types/arena-shooter.types';
+import { getGameConfig } from '../utils/gameConfigStore';
 
 interface Position extends Vec2 {}
 
@@ -61,7 +56,9 @@ export function useShooterPhysics({
     if (input.action !== 'move') return;
     const dx = input.dx ?? 0;
     const dy = input.dy ?? 0;
-    velRef.current = { x: dx * PLAYER_SPEED, y: dy * PLAYER_SPEED };
+    const cfg = getGameConfig();
+    const speed = cfg?.arenaConfig.player.speed ?? 5;
+    velRef.current = { x: dx * speed, y: dy * speed };
     if (dx !== 0 || dy !== 0) {
       lastDirRef.current = { x: dx, y: dy };
     }
@@ -73,6 +70,11 @@ export function useShooterPhysics({
     const deltaMs = Math.min(rawDelta, 100);
     lastStepTimeRef.current = now;
 
+    const cfg = getGameConfig();
+    const arenaW = cfg?.arenaConfig.arena.width ?? 1600;
+    const arenaH = cfg?.arenaConfig.arena.height ?? 1200;
+    const playerR = cfg?.arenaConfig.player.radius ?? 20;
+
     const scale = deltaMs / 33.33;
     const pos = posRef.current;
     const vel = velRef.current;
@@ -81,13 +83,13 @@ export function useShooterPhysics({
     let ny = pos.y + vel.y * scale;
 
     // Clamp a límites de arena
-    nx = Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, nx));
-    ny = Math.max(PLAYER_RADIUS, Math.min(ARENA_HEIGHT - PLAYER_RADIUS, ny));
+    nx = Math.max(playerR, Math.min(arenaW - playerR, nx));
+    ny = Math.max(playerR, Math.min(arenaH - playerR, ny));
 
     // Resolver colisiones con estructuras (client-side)
     if (structuresRef?.current) {
       for (const s of structuresRef.current) {
-        const resolved = resolveStructureCollision({ x: nx, y: ny }, s, PLAYER_RADIUS);
+        const resolved = resolveStructureCollision({ x: nx, y: ny }, s, playerR);
         nx = resolved.x;
         ny = resolved.y;
       }
@@ -112,8 +114,12 @@ export function useShooterPhysics({
     const dy = serverPos.y - pos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > RECONCILE_THRESHOLD) {
-      correctionRef.current = { target: serverPos, framesLeft: CORRECTION_FRAMES };
+    const cfg = getGameConfig();
+    const threshold = cfg?.arenaConfig.gameplay.reconcileThreshold ?? 8;
+    const frames = cfg?.arenaConfig.gameplay.correctionFrames ?? 3;
+
+    if (dist > threshold) {
+      correctionRef.current = { target: serverPos, framesLeft: frames };
     } else if (dist > 2) {
       posRef.current = { x: pos.x + dx * 0.15, y: pos.y + dy * 0.15 };
     }

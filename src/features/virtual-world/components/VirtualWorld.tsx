@@ -20,104 +20,12 @@ import { drawWorldDecor } from './WorldDecor';
 import { useAvatarImages } from '../hooks/useAvatarImages';
 import { usePlayerCard } from '../hooks/usePlayerCard';
 import { PlayerCard } from './PlayerCard';
+import { VirtualJoystick } from '@/shared/components/VirtualJoystick';
 
 interface ChatBubble extends ChatMessage {
   id: string;
 }
 
-// â”€â”€â”€ Joystick â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-interface VirtualJoystickProps {
-  onMove: (dx: number, dy: number) => void;
-}
-
-const JOYSTICK_RADIUS = 52;
-const KNOB_RADIUS = 22;
-
-const VirtualJoystick: React.FC<VirtualJoystickProps> = ({ onMove }) => {
-  const baseRef = useRef<HTMLDivElement>(null);
-  const activeTouch = useRef<number | null>(null);
-  const knobRef = useRef<HTMLDivElement>(null);
-
-  const getOffset = (clientX: number, clientY: number) => {
-    const rect = baseRef.current!.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const rawDx = clientX - cx;
-    const rawDy = clientY - cy;
-    const dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    const clamped = Math.min(dist, JOYSTICK_RADIUS - KNOB_RADIUS);
-    const angle = Math.atan2(rawDy, rawDx);
-    return {
-      dx: (Math.cos(angle) * clamped) / (JOYSTICK_RADIUS - KNOB_RADIUS),
-      dy: (Math.sin(angle) * clamped) / (JOYSTICK_RADIUS - KNOB_RADIUS),
-      kx: Math.cos(angle) * clamped,
-      ky: Math.sin(angle) * clamped,
-    };
-  };
-
-  const setKnob = (kx: number, ky: number) => {
-    if (knobRef.current) {
-      knobRef.current.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
-    }
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (activeTouch.current !== null) return;
-    const t = e.changedTouches[0];
-    activeTouch.current = t.identifier;
-    const { dx, dy, kx, ky } = getOffset(t.clientX, t.clientY);
-    setKnob(kx, ky);
-    onMove(dx, dy);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = Array.from(e.changedTouches).find(x => x.identifier === activeTouch.current);
-    if (!t) return;
-    e.preventDefault();
-    const { dx, dy, kx, ky } = getOffset(t.clientX, t.clientY);
-    setKnob(kx, ky);
-    onMove(dx, dy);
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const t = Array.from(e.changedTouches).find(x => x.identifier === activeTouch.current);
-    if (!t) return;
-    activeTouch.current = null;
-    setKnob(0, 0);
-    onMove(0, 0);
-  };
-
-  return (
-    <div
-      ref={baseRef}
-      className="relative select-none touch-none"
-      style={{ width: JOYSTICK_RADIUS * 2, height: JOYSTICK_RADIUS * 2, borderRadius: '50%', background: 'rgba(0,0,0,0.18)', border: '2px solid rgba(255,255,255,0.18)' }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
-      aria-label="Joystick de movimiento"
-    >
-      <div
-        ref={knobRef}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: KNOB_RADIUS * 2,
-          height: KNOB_RADIUS * 2,
-          borderRadius: '50%',
-          background: 'rgba(255,255,255,0.85)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          transform: 'translate(-50%, -50%)',
-          transition: 'transform 0.05s',
-          pointerEvents: 'none',
-        }}
-      />
-    </div>
-  );
-};
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 

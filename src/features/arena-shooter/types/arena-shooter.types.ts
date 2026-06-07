@@ -15,23 +15,6 @@ export interface PhysicsBody extends Vec2 {
 /** Tipos de arma disponibles */
 export type WeaponType = 'normal' | 'shotgun' | 'rocket';
 
-/** Balas de escopeta por recarga */
-export const SHOTGUN_AMMO = 6;
-/** Número de pellets por disparo de escopeta */
-export const SHOTGUN_PELLETS = 3;
-/** Dispersión angular por pellet (radianes) */
-export const SHOTGUN_SPREAD = 0.25;
-/** Cooldown de disparo de escopeta en ms (1 disparo/segundo) */
-export const SHOTGUN_FIRE_RATE_MS = 1000;
-
-/** Número de cohetes por recarga */
-export const ROCKET_AMMO = 3;
-/** Radio de explosión del cohete en píxeles */
-export const ROCKET_EXPLOSION_RADIUS = 120;
-
-/** Duración del escudo en milisegundos */
-export const SHIELD_DURATION_MS = 8_000;
-
 /**
  * 8 posiciones pre-definidas de spawn de cajas de pickup en el mapa.
  * Distribuidas en zonas abiertas, alejadas de estructuras y bordes.
@@ -159,28 +142,54 @@ export interface ArenaShooterProps {
   onReturn: (spawnX: number, spawnY: number) => void;
 }
 
-// ─── Constantes de juego ──────────────────────────────────────────────────────
-
-export const ARENA_WIDTH = 1600;
-export const ARENA_HEIGHT = 1200;
-export const PLAYER_RADIUS = 20;
-export const PROJECTILE_RADIUS = 6;
-export const PROJECTILE_SPEED = 8;        // px/tick
-export const PLAYER_SPEED = 5;            // px/tick
-export const MAX_PLAYERS = 6;
-export const INITIAL_LIVES = 3;
-export const FIRE_RATE_LIMIT = 3;         // disparos/segundo
-export const TICK_RATE = 30;              // ticks/segundo
-export const TICK_MS = 1000 / TICK_RATE;  // 33.33 ms
-export const RECONCILE_THRESHOLD = 40;    // píxeles — solo corregir drift grande
-export const CORRECTION_FRAMES = 8;       // frames para suavizar la corrección (~133ms a 60fps)
-export const ZONE_ENTRY_MS = 2000;        // ms para entrar
-export const ZONE_PRESENCE_TTL = 500;     // ms TTL Redis
-export const MAX_SPEED_VIOLATION = 50;    // px de tolerancia anti-cheat
-export const REDIS_PERSIST_INTERVAL = 5000; // ms
-
 /** Posición de la Shooter_Zone en el canvas del VirtualWorld (1600×1200) */
 export const SHOOTER_ZONE_AREA = { x: 1200, y: 540, width: 150, height: 150 };
+
+// ─── Game Config (recibida del servidor en el evento 'gameConfig') ──────────
+
+export interface WeaponConfig {
+  damage: number;
+  speed: number;
+  fireRate: number;
+  ammo: number | null;
+  pellets?: number;
+  spread?: number;
+  explosionRadius?: number;
+}
+
+export interface ShieldConfig {
+  durationMs: number;
+}
+
+export interface ArenaConfig {
+  arena: { width: number; height: number };
+  player: { radius: number; speed: number; maxLives: number };
+  projectile: { radius: number };
+  gameplay: {
+    maxPlayers: number;
+    tickRate: number;
+    fireRateLimit: number;
+    reconcileThreshold: number;
+    correctionFrames: number;
+    zoneEntryMs: number;
+    zonePresenceTtl: number;
+    maxSpeedViolation: number;
+  };
+  xp: { perKill: number; survival5min: number; survivalMs: number };
+  badges: { killsThreshold: number; survivalMs: number };
+  shooterZone: {
+    rect: { x: number; y: number; width: number; height: number };
+    center: { x: number; y: number };
+    spawnRadius: number;
+  };
+  room: { id: string };
+}
+
+export interface GameConfig {
+  weapons: Record<string, WeaponConfig>;
+  shield: ShieldConfig | undefined;
+  arenaConfig: ArenaConfig;
+}
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
