@@ -95,6 +95,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     userId: localPlayer.userId,
     name: localPlayer.name,
     health: 100,
+    shield: 0,
     kills: 0,
     deaths: 0,
   });
@@ -168,6 +169,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         userId: p.userId,
         name: p.name,
         health: p.health,
+        shield: p.shield,
         kills: p.kills,
         deaths: p.deaths,
       }));
@@ -179,12 +181,14 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       reconcile({ x: serverPlayer.x, y: serverPlayer.y }, snapshot.tick);
       setLocalStats(prev => {
         if (prev.health !== serverPlayer.health ||
+            prev.shield !== serverPlayer.shield ||
             prev.kills !== serverPlayer.kills ||
             prev.deaths !== serverPlayer.deaths) {
           return {
             userId: serverPlayer.userId,
             name: serverPlayer.name,
             health: serverPlayer.health,
+            shield: serverPlayer.shield,
             kills: serverPlayer.kills,
             deaths: serverPlayer.deaths,
           };
@@ -636,17 +640,17 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     latestPlayers.forEach(p => {
       const isLocal = p.userId === localPlayer.userId;
       const pos = isLocal ? localPos : getInterpolatedPlayer(p.userId, now);
-      drawPlayer(ctx, pos.x, pos.y, p.name, isLocal, p.shielded);
+      drawPlayer(ctx, pos.x, pos.y, p.name, isLocal, p.shield);
     });
 
     ctx.restore();
   };
 
-  const drawPlayer = (ctx: CanvasRenderingContext2D, x: number, y: number, name: string, isLocal: boolean, isShielded?: boolean) => {
+  const drawPlayer = (ctx: CanvasRenderingContext2D, x: number, y: number, name: string, isLocal: boolean, shield: number) => {
     ctx.save();
 
     // Shield Aura
-    if (isShielded) {
+    if (shield > 0) {
       ctx.beginPath();
       ctx.arc(x, y, playerRadius + 8, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
@@ -800,14 +804,27 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
           </div>
         ))}
         <div className={styles.localStatsPanel}>
-          <div className={styles.statItem}>
+          <div className={styles.barRow}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#e74c3c" style={{ filter: 'drop-shadow(0 0 3px #e74c3c)', flexShrink: 0 }}>
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
             <div className={styles.healthBarOuter}>
               <div
                 className={styles.healthBarInner}
                 style={{ width: `${Math.max(0, (localStats.health / (arenaConfig?.player.maxHealth ?? 100)) * 100)}%` }}
               />
             </div>
-            <span className={styles.statLabel}>Salud</span>
+          </div>
+          <div className={styles.barRow}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#3498db" style={{ filter: 'drop-shadow(0 0 3px #3498db)', flexShrink: 0 }}>
+              <polygon points="13,2 4,14 12,14 11,22 20,10 12,10" />
+            </svg>
+            <div className={styles.shieldBarOuter}>
+              <div
+                className={styles.shieldBarInner}
+                style={{ width: `${Math.max(0, (localStats.shield / (getGameConfig()?.shield?.maxShield ?? 50)) * 100)}%` }}
+              />
+            </div>
           </div>
           <div className={styles.statItem}>
             <span className={styles.statValue}>{localStats.kills}</span>

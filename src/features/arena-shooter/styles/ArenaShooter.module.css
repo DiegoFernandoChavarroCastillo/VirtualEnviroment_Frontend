@@ -67,11 +67,18 @@
 /* Stats del jugador local dentro del panel de scoreboard */
 .localStatsPanel {
   display: flex;
-  gap: 12px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .leaderboard {
@@ -154,6 +161,22 @@
 .healthBarInner {
   height: 100%;
   background: linear-gradient(90deg, #e74c3c, #f1c40f, #2ecc71);
+  border-radius: 5px;
+  transition: width 0.15s ease;
+}
+
+.shieldBarOuter {
+  width: 80px;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.shieldBarInner {
+  height: 100%;
+  background: linear-gradient(90deg, #1a5276, #3498db, #85c1e9);
   border-radius: 5px;
   transition: width 0.15s ease;
 }

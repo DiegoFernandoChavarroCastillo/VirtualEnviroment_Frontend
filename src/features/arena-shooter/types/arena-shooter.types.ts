@@ -54,13 +54,13 @@ export interface ShooterPlayerInfo {
   userId: string;
   name: string;
   health: number;
+  shield: number;
   kills: number;
   deaths: number;
 }
 
 export interface ShooterPlayerState extends ShooterPlayerInfo, PhysicsBody {
-  /** true mientras el escudo esté activo */
-  shielded?: boolean;
+  shield: number;
 }
 
 // ─── Proyectil ────────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ export interface WeaponConfig {
 }
 
 export interface ShieldConfig {
-  durationMs: number;
+  maxShield: number;
 }
 
 export interface ArenaConfig {
