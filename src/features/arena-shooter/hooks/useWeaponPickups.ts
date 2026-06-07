@@ -6,6 +6,7 @@ import {
   ROCKET_AMMO,
   PICKUP_SPAWN_POSITIONS,
 } from '../types/arena-shooter.types';
+import { CanvasIconPaths, drawGameIcon } from '@/shared/icons/canvasIcons';
 
 // ─── Constantes internas ─────────────────────────────────────────────────────
 
@@ -203,26 +204,26 @@ export function useWeaponPickups(): UseWeaponPickupsReturn {
     let glowColor = '';
     let boxColor = '';
     let accentColor = '';
-    let icon = '';
+    let iconPath = '';
     let label = '';
 
     if (isShotgun) {
       glowColor = `rgba(243, 156, 18, ${pulse})`;
       boxColor = '#f39c12';
       accentColor = '#fff3cd';
-      icon = '🔫';
+      iconPath = CanvasIconPaths.Shotgun;
       label = 'SHOTGUN';
     } else if (isRocket) {
       glowColor = `rgba(231, 76, 60, ${pulse})`;
       boxColor = '#c0392b';
       accentColor = '#ff8a80';
-      icon = '🚀';
+      iconPath = CanvasIconPaths.Rocket;
       label = 'ROCKET';
     } else if (isShield) {
       glowColor = `rgba(52, 152, 219, ${pulse})`;
       boxColor = '#2980b9';
       accentColor = '#d6eaf8';
-      icon = '🛡️';
+      iconPath = CanvasIconPaths.EnergyShield;
       label = 'SHIELD';
     }
 
@@ -241,19 +242,17 @@ export function useWeaponPickups(): UseWeaponPickupsReturn {
     ctx.lineWidth = 2;
     ctx.strokeRect(cx - BOX_SIZE / 2, cy - BOX_SIZE / 2, BOX_SIZE, BOX_SIZE);
 
-    // Ícono interno
+    // Ícono interno (game-icons-react → Path2D)
     ctx.shadowBlur = 0;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px "DM Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(icon, cx, cy);
+    drawGameIcon(ctx, iconPath, cx, cy, 18, '#ffffff');
 
     // Etiqueta encima de la caja
     ctx.font = 'bold 10px "DM Sans", sans-serif';
     ctx.fillStyle = accentColor;
     ctx.shadowBlur = 6;
     ctx.shadowColor = glowColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(label, cx, cy - BOX_SIZE / 2 - 8);
 
     ctx.shadowBlur = 0;

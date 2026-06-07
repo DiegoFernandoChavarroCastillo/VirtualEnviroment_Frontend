@@ -3,6 +3,7 @@ import { Map } from 'lucide-react';
 import { MINIMAP_ZONES } from '../config/minimap-zones';
 import { UserInMap } from '../types/realtime.types';
 import { FOOTBALL_DUEL_ENABLED } from '@/shared/featureFlags';
+import { CanvasIconPaths, drawGameIcon } from '@/shared/icons/canvasIcons';
 
 // ─── World / minimap dimensions ───────────────────────────────────────────────
 const WORLD_W = 1600;
@@ -89,15 +90,14 @@ const Minimap: React.FC<MinimapProps> = ({
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Icon
-      ctx.font = `${Math.max(8, mr * 0.9)}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(zone.icon, mx, my);
+      // Icon (game-icons-react → Path2D)
+      const iconSize = Math.max(8, mr * 0.9);
+      drawGameIcon(ctx, CanvasIconPaths[zone.icon], mx, my, iconSize, '#ffffff');
 
       // Label below
       ctx.font = 'bold 6px "DM Sans", system-ui, sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(zone.label, mx, my + mr * 0.6 + 1);
     }

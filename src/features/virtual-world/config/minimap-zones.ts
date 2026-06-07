@@ -6,6 +6,8 @@
  * the Minimap component will pick it up automatically.
  */
 
+import { CanvasIconPaths, type CanvasIconName } from '@/shared/icons/canvasIcons';
+
 export interface MinimapZone {
   id: string;
   label: string;
@@ -15,8 +17,8 @@ export interface MinimapZone {
   y: number;
   /** Approximate radius in world units (used to draw the zone circle) */
   radius: number;
-  /** Emoji icon rendered on the minimap dot */
-  icon: string;
+  /** game-icons-react icon path rendered on the minimap dot */
+  icon: CanvasIconName;
   /** Tailwind / CSS colour for the zone marker */
   color: string;
 }
@@ -32,7 +34,7 @@ export const MINIMAP_ZONES: MinimapZone[] = [
     x: 800,
     y: 600,
     radius: 70,
-    icon: '⚽',
+    icon: 'SoccerBall',
     color: '#27ae60',
   },
   {
@@ -41,7 +43,9 @@ export const MINIMAP_ZONES: MinimapZone[] = [
     x: 1275,
     y: 615,
     radius: 70,
-    icon: '🎯',
+    icon: 'Bullseye',
     color: '#e74c3c',
   },
 ];
+
+export { CanvasIconPaths };

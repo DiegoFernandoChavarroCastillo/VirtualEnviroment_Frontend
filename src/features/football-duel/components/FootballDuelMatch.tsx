@@ -17,6 +17,7 @@ import ReactConfetti from 'react-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import GoalParticles from './GoalParticles';
 import { getRandomSpawnPosition } from '@/shared/utils/spawnPosition';
+import { Delapouite, Lorc } from '@/shared/icons/gameIcons';
 
 // â”€â”€â”€ Field constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FIELD_MARGIN = 20;
@@ -127,6 +128,7 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const [overlay, setOverlay] = useState<OverlayType>(null);
   const [overlayText, setOverlayText] = useState('');
+  const [loserName, setLoserName] = useState<string | null>(null);
   const [score, setScore] = useState<Record<string, number>>({
     [localPlayer.userId]: 0,
     [opponent.userId]: 0,
@@ -161,7 +163,7 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
     (payload: { scorerId: string; score: Record<string, number> }) => {
       setScore({ ...payload.score });
       setOverlay('goal');
-      setOverlayText('⚽ ¡GOL!');
+      setOverlayText('¡GOL!');
 
       // Instant confetti burst
       confetti({
@@ -188,14 +190,15 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
 
       if (payload.isDraw) {
         setOverlay('draw');
-        setOverlayText('🤝 ¡Empate!');
+        setOverlayText('¡Empate!');
       } else if (payload.winnerId === localPlayer.userId) {
         setOverlay('win');
-        setOverlayText('🏆 ¡Ganaste!');
+        setOverlayText('¡Ganaste!');
         setShowWinConfetti(true);
       } else {
         setOverlay('lose');
-        setOverlayText(`😔 ¡Perdiste! Ganó ${payload.winnerName ?? 'el oponente'}`);
+        setOverlayText('¡Perdiste!');
+        setLoserName(payload.winnerName ?? 'el oponente');
       }
 
       // Fallback: if returnToVirtualWorld doesn't arrive in 10 s, force return
@@ -567,13 +570,32 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
                     : 'bg-green-500/90 border-green-300 text-white'
                 }`}
               >
-                <motion.p 
-                  animate={{ scale: [1, 1.1, 1] }} 
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
                   transition={{ repeat: Infinity, duration: 0.5 }}
-                  className="text-6xl font-black drop-shadow-lg"
+                  className="flex items-center justify-center gap-4 drop-shadow-lg"
                 >
-                  {overlayText}
-                </motion.p>
+                  {overlay === 'goal' && (
+                    <Delapouite.SoccerBall size={56} color="currentColor" />
+                  )}
+                  {overlay === 'win' && (
+                    <Lorc.Trophy size={56} color="currentColor" />
+                  )}
+                  {overlay === 'draw' && (
+                    <Delapouite.ShakingHands size={56} color="currentColor" />
+                  )}
+                  {overlay === 'lose' && (
+                    <Lorc.TearTracks size={56} color="currentColor" />
+                  )}
+                  <p className="text-6xl font-black m-0">
+                    {overlayText}
+                  </p>
+                </motion.div>
+                {overlay === 'lose' && loserName && (
+                  <p className="text-sm mt-1 font-semibold opacity-90">
+                    Ganó {loserName}
+                  </p>
+                )}
                 {(overlay === 'win' || overlay === 'lose' || overlay === 'draw') && (
                   <motion.p 
                     initial={{ opacity: 0 }}
@@ -596,11 +618,11 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
           <DuelJoystick onMove={(dx, dy) => { joystickRef.current = { dx, dy }; }} />
           <button
             type="button"
-            className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 text-white text-2xl font-black active:bg-white/40 transition-colors select-none touch-none"
+            className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 text-white active:bg-white/40 transition-colors select-none touch-none flex items-center justify-center"
             onTouchStart={(e) => { e.preventDefault(); kickPendingRef.current = true; }}
             aria-label="Patear"
           >
-            âš½
+            <Delapouite.SoccerBall size={32} color="currentColor" />
           </button>
         </div>
       ) : (

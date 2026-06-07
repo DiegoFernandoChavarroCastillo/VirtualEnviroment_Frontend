@@ -8,6 +8,7 @@ import { useWeaponPickups } from '../hooks/useWeaponPickups';
 import { useArenaSound } from '../hooks/useArenaSound';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { secureRandom, generateSecureId } from '@/shared/utils/secureRandom';
+import { Sbed, Lorc, Delapouite } from '@/shared/icons/gameIcons';
 import styles from '../styles/ArenaShooter.module.css';
 import {
   ARENA_WIDTH,
@@ -617,7 +618,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       {/* ── Aviso de orientación (solo móvil en portrait) ────────────────── */}
       {isMobileDevice && isPortrait && (
         <div className={styles.rotateOverlay}>
-          <div className={styles.rotateIcon}>⟳</div>
+          <div className={styles.rotateIcon}><Delapouite.ClockwiseRotation size={64} color="#f1c40f" /></div>
           <p className={styles.rotateText}>Gira tu teléfono para jugar</p>
           <p className={styles.rotateSubtext}>Este juego requiere orientación horizontal</p>
         </div>
@@ -697,7 +698,11 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         {/* Weapon HUD — esquina inferior-derecha del canvas */}
         <div className={`${styles.weaponHUD} ${hudWeapon.type !== 'normal' ? styles[hudWeapon.type] : styles.hidden}`}>
           <div className={styles.weaponHUDIcon}>
-            {hudWeapon.type === 'shotgun' ? '🔫' : '🚀'}
+            {hudWeapon.type === 'shotgun' ? (
+              <Sbed.Shotgun size={28} color="currentColor" />
+            ) : (
+              <Lorc.Rocket size={28} color="currentColor" />
+            )}
           </div>
           <div className={styles.weaponHUDInfo}>
             <div className={styles.weaponHUDName}>{hudWeapon.type.toUpperCase()}</div>
@@ -790,7 +795,10 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
             animate={{ opacity: 1, y: 0 }}
             className={styles.gameOverOverlay}
           >
-            <h1 style={{ fontSize: '64px', margin: 0 }}>🏆 ¡VICTORIA!</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: 0 }}>
+              <Lorc.Trophy size={64} color="#f1c40f" />
+              <h1 style={{ fontSize: '64px', margin: 0 }}>¡VICTORIA!</h1>
+            </div>
             <p style={{ opacity: 0.7 }}>Eres el último sobreviviente.</p>
             <button
               className={styles.returnButton}

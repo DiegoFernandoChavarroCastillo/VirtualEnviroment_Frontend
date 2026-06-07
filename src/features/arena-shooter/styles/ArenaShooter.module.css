@@ -230,9 +230,12 @@
 }
 
 .rotateIcon {
-  font-size: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
   animation: rotateHint 2s ease-in-out infinite;
-  color: #f1c40f;
 }
 
 @keyframes rotateHint {
