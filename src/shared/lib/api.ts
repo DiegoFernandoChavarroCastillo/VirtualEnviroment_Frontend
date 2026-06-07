@@ -152,4 +152,3 @@ class ApiClient {
 export const authApi = new ApiClient(API_BASE);
 export const userApi = new ApiClient(API_BASE);
 export const leaderboardApi = new ApiClient(API_BASE);
-export const connectionsApi = new ApiClient(API_BASE);

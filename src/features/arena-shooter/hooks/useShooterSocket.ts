@@ -208,5 +208,9 @@ export const useShooterSocket = ({
     socketRef.current?.emit('playerInput', input);
   }, []);
 
-  return { isConnected, isReconnecting, emitPlayerInput, gameConfig: gameConfigRef };
+  const emitCollectItem = useCallback((itemType: string) => {
+    socketRef.current?.emit('collectItem', { itemType });
+  }, []);
+
+  return { isConnected, isReconnecting, emitPlayerInput, emitCollectItem, gameConfig: gameConfigRef };
 };

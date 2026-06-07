@@ -6,6 +6,7 @@ import useSound from 'use-sound';
  *
  * Sonidos disponibles:
  *  - playShoot        → arma normal o escopeta
+ *  - playLaser        → disparo del laser
  *  - playRocket       → disparo del rocket launcher
  *  - playExplosion    → explosión del cohete al impactar
  *  - playItemCollected → recogida de un ítem (arma, escudo, etc.)
@@ -13,6 +14,11 @@ import useSound from 'use-sound';
 export const useArenaSound = () => {
   const [playShootRaw] = useSound('/sounds/shoot.mp3', {
     volume: 0.45,
+    interrupt: false,
+  });
+
+  const [playLaserRaw] = useSound('/sounds/laser.mp3', {
+    volume: 0.6,
     interrupt: false,
   });
 
@@ -35,6 +41,10 @@ export const useArenaSound = () => {
     playShootRaw();
   }, [playShootRaw]);
 
+  const playLaser = useCallback(() => {
+    playLaserRaw();
+  }, [playLaserRaw]);
+
   const playRocket = useCallback(() => {
     playRocketRaw();
   }, [playRocketRaw]);
@@ -47,5 +57,5 @@ export const useArenaSound = () => {
     playItemCollectedRaw();
   }, [playItemCollectedRaw]);
 
-  return { playShoot, playRocket, playExplosion, playItemCollected };
+  return { playShoot, playLaser, playRocket, playExplosion, playItemCollected };
 };

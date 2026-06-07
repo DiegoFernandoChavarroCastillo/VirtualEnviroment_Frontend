@@ -85,7 +85,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
   const [hudWeapon, setHudWeapon] = useState<{ type: WeaponType; ammo: number }>({ type: 'normal', ammo: 0 });
   const lastHudWeaponRef = useRef<{ type: WeaponType; ammo: number }>({ type: 'normal', ammo: 0 });
 
-  const { playShoot, playRocket, playExplosion, playItemCollected } = useArenaSound();
+  const { playShoot, playLaser, playRocket, playExplosion, playItemCollected } = useArenaSound();
 
   const [localStats, setLocalStats] = useState<ShooterPlayerInfo>({
     userId: localPlayer.userId,
@@ -276,7 +276,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     particleSystemRef.current.emitExplosion(victimPos.x, victimPos.y, '#3498db', 20);
   }, [localPlayer.userId, addNotification, getInterpolatedPlayer, getLocalPlayerPos]);
 
-  const { emitPlayerInput, isConnected } = useShooterSocket({
+  const { emitPlayerInput, emitCollectItem, isConnected } = useShooterSocket({
     roomId,
     playerName: localPlayer.name,
     onSnapshot: handleSnapshot,
@@ -324,7 +324,6 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
 
-    let lastShootTime = 0;
     let lastMoveEmitTime = 0;
     let lastDx = 0;
     let lastDy = 0;
@@ -358,11 +357,14 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       const pickedType = checkPickupCollision(localPos.x, localPos.y);
       if (pickedType) {
         triggerShake(5);
-        particleSystemRef.current.emitExplosion(localPos.x, localPos.y, pickedType === 'shield' ? '#3498db' : '#f1c40f', 15);
+        const pickupColor = pickedType === 'shield' ? '#3498db' : pickedType === 'life' ? '#e74c3c' : '#f1c40f';
+        particleSystemRef.current.emitExplosion(localPos.x, localPos.y, pickupColor, 15);
         addNotification(`¡${pickedType.toUpperCase()} RECOGIDO!`, 2000, 'default');
         playItemCollected();
         if (pickedType === 'shield') {
           emitPlayerInput({ action: 'activateShield' });
+        } else if (pickedType === 'life') {
+          emitCollectItem('life');
         }
       }
 
@@ -377,17 +379,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       }
 
       const wantsToShoot = keys[' '] || keys['enter'] || isMouseDown || shootPendingMobile.current;
-      let canShoot = false;
-
-      if (wantsToShoot) {
-        if (currentWeapon.type === 'shotgun') {
-          canShoot = consumeAmmo();
-        } else {
-          if (now - lastShootTime > 300) {
-            canShoot = consumeAmmo();
-          }
-        }
-      }
+      const canShoot = wantsToShoot ? consumeAmmo() : false;
 
       if (canShoot) {
         let aimDx = 0;
@@ -410,7 +402,11 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         emitPlayerInput({ action: 'shoot', aimDx, aimDy, weaponType: currentWeapon.type });
         const angle = Math.atan2(aimDy, aimDx);
 
-        if (currentWeapon.type === 'shotgun') {
+        if (currentWeapon.type === 'laser') {
+          particleSystemRef.current.emitLaserMuzzleFlash(localPos.x + aimDx * 25, localPos.y + aimDy * 25, angle);
+          triggerShake(4);
+          playLaser();
+        } else if (currentWeapon.type === 'shotgun') {
           particleSystemRef.current.emitShotgunMuzzleFlash(localPos.x + aimDx * 25, localPos.y + aimDy * 25, angle);
           triggerShake(8);
           playShoot();
@@ -424,7 +420,6 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
           playShoot();
         }
 
-        lastShootTime = now;
         shootPendingMobile.current = false;
       }
 
@@ -528,9 +523,52 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
 
       const isRocket = proj.weaponType === 'rocket';
       const isShotgun = proj.weaponType === 'shotgun';
+      const isLaser = proj.weaponType === 'laser';
       const radius = isRocket ? projectileRadius * 1.5 : projectileRadius;
 
-      if (isRocket) {
+      if (isLaser) {
+        const beamLen = 80;
+        const ex = proj.x + proj.vx * beamLen;
+        const ey = proj.y + proj.vy * beamLen;
+
+        // Glow exterior amplio
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = '#2ecc71';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Capa media neon
+        ctx.strokeStyle = '#2ecc71';
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = '#2ecc71';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Core blanco brillante
+        ctx.strokeStyle = '#ffffff';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#a3e4d7';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Punta del haz
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = '#2ecc71';
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      } else if (isRocket) {
         const angle = Math.atan2(proj.vy, proj.vx);
         ctx.translate(proj.x, proj.y);
         ctx.rotate(angle);
@@ -708,6 +746,8 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
           <div className={styles.weaponHUDIcon}>
             {hudWeapon.type === 'shotgun' ? (
               <Sbed.Shotgun size={28} color="currentColor" />
+            ) : hudWeapon.type === 'laser' ? (
+              <Lorc.LaserBlast size={28} color="currentColor" />
             ) : (
               <Lorc.Rocket size={28} color="currentColor" />
             )}
@@ -737,7 +777,13 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         ))}
         <div className={styles.localStatsPanel}>
           <div className={styles.statItem}>
-            <span className={styles.statValue} style={{ color: '#e74c3c' }}>{localStats.lives}</span>
+            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+              {Array.from({ length: Math.min(localStats.lives, 4) }).map((_, i) => (
+                <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="#e74c3c" style={{ filter: 'drop-shadow(0 0 3px #e74c3c)' }}>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              ))}
+            </div>
             <span className={styles.statLabel}>Vidas</span>
           </div>
           <div className={styles.statItem}>

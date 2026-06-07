@@ -3,9 +3,7 @@ import { Send, MessageSquare } from 'lucide-react';
 import { useRealtimeMap } from '../hooks/useRealtimeMap';
 import { useSocket } from '@/shared/contexts/SocketContext';
 import { useAuth } from '@/features/auth/contexts/AuthContext';
-import { connectionsApi } from '@/shared/lib/api';
 import { secureRandom, generateSecureId } from '@/shared/utils/secureRandom';
-import { toast } from '@/shared/components/ui/use-toast';
 import { UserInMap, ChatMessage } from '../types/realtime.types';
 import { FOOTBALL_DUEL_ENABLED } from '@/shared/featureFlags';
 import { drawDuelPads } from '@/features/football-duel/components/DuelPads';
@@ -59,7 +57,7 @@ const VirtualWorld: React.FC = () => {
   const { user: currentUser } = useAuth();
   const { socket } = useSocket();
   const { preloadLocalUser, ensureRemoteUser, getImage, clearCache } = useAvatarImages();
-  const { card: playerCard, loading: cardLoading, openCard, closeCard, markConnected } = usePlayerCard(currentUser?.id ?? null);
+  const { card: playerCard, loading: cardLoading, openCard, closeCard } = usePlayerCard(currentUser?.id ?? null);
   const {
     users: remoteUsers,
     chatHistory,
@@ -625,21 +623,6 @@ const VirtualWorld: React.FC = () => {
     keysPressed.current['btn-right'] = dx > DEAD;
   }, []);
 
-  const emitConnectAttempt = useCallback(async (targetUserId: string) => {
-    if (!currentUser?.id) return;
-    // currentUser.id is the user-management ID, sourced from the AuthProvider.
-    // targetUserId here is the profileId resolved by usePlayerCard â€” also user-management ID
-    try {
-      await connectionsApi.request('/connections', {
-        method: 'POST',
-        body: { requesterId: currentUser.id, receiverId: targetUserId },
-      });
-      toast({ title: 'Solicitud enviada', description: 'Se ha enviado una solicitud de conexiÃ³n.' });
-      markConnected();
-    } catch {
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo enviar la solicitud de conexiÃ³n.' });
-    }
-  }, [currentUser, markConnected]);
 
   // â”€â”€ Canvas click â†’ open player card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -757,7 +740,6 @@ const VirtualWorld: React.FC = () => {
             viewportWidth={VIEWPORT_WIDTH}
             viewportHeight={VIEWPORT_HEIGHT}
             onClose={closeCard}
-            onConnect={emitConnectAttempt}
           />
           <Minimap
             playerX={player.x}

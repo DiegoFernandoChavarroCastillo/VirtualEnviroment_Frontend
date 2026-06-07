@@ -13,21 +13,39 @@ export interface PhysicsBody extends Vec2 {
 // ─── Armas especiales ─────────────────────────────────────────────────────────
 
 /** Tipos de arma disponibles */
-export type WeaponType = 'normal' | 'shotgun' | 'rocket';
+export type WeaponType = 'normal' | 'shotgun' | 'rocket' | 'laser';
+
+/** Tipos de pickup que pueden aparecer en el mapa */
+export type PickupType = 'shotgun' | 'rocket' | 'shield' | 'life' | 'laser';
 
 /**
- * 8 posiciones pre-definidas de spawn de cajas de pickup en el mapa.
+ * Posiciones pre-definidas de spawn de cajas de pickup en el mapa.
  * Distribuidas en zonas abiertas, alejadas de estructuras y bordes.
+ * Se verificaron contra todas las CoverStructure para evitar solapamientos.
  */
 export const PICKUP_SPAWN_POSITIONS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 400,  y: 200  },  // cuadrante superior-izquierdo
-  { x: 1200, y: 200  },  // cuadrante superior-derecho
-  { x: 400,  y: 1000 },  // cuadrante inferior-izquierdo
-  { x: 1200, y: 1000 },  // cuadrante inferior-derecho
-  { x: 800,  y: 350  },  // centro-norte
-  { x: 800,  y: 850  },  // centro-sur
-  { x: 250,  y: 600  },  // centro-oeste
-  { x: 1350, y: 600  },  // centro-este
+  { x: 400,  y: 200  },
+  { x: 1200, y: 200  },
+  { x: 400,  y: 1000 },
+  { x: 1200, y: 1000 },
+  { x: 800,  y: 350  },
+  { x: 800,  y: 850  },
+  { x: 250,  y: 600  },
+  { x: 1350, y: 600  },
+  { x: 600,  y: 200  },
+  { x: 1000, y: 200  },
+  { x: 400,  y: 400  },
+  { x: 800,  y: 400  },
+  { x: 1200, y: 400  },
+  { x: 700,  y: 600  },
+  { x: 900,  y: 600  },
+  { x: 400,  y: 800  },
+  { x: 600,  y: 800  },
+  { x: 1000, y: 800  },
+  { x: 1200, y: 800  },
+  { x: 1400, y: 800  },
+  { x: 600,  y: 1000 },
+  { x: 1000, y: 1000 },
 ] as const;
 
 // ─── Jugador en la arena ──────────────────────────────────────────────────────
@@ -185,10 +203,15 @@ export interface ArenaConfig {
   room: { id: string };
 }
 
+export interface SpawnRates {
+  [pickupType: string]: number;
+}
+
 export interface GameConfig {
   weapons: Record<string, WeaponConfig>;
   shield: ShieldConfig | undefined;
   arenaConfig: ArenaConfig;
+  spawnRates?: SpawnRates;
 }
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { X, UserPlus, ExternalLink, Clock } from 'lucide-react';
-import { CardConnectionState, PlayerCardData } from '../hooks/usePlayerCard';
+import { X, ExternalLink } from 'lucide-react';
+import { PlayerCardData } from '../hooks/usePlayerCard';
 import { translateProgram } from '@/shared/utils/programTranslations';
 import { SafeRemoteImage } from '@/shared/components/SafeRemoteImage';
 
@@ -12,7 +12,6 @@ interface PlayerCardProps {
   viewportWidth: number;
   viewportHeight: number;
   onClose: () => void;
-  onConnect: (userId: string) => Promise<void>;
 }
 
 interface CardAvatarProps {
@@ -20,22 +19,8 @@ interface CardAvatarProps {
   profilePicURL?: string;
 }
 
-interface CardContentProps {
-  card: PlayerCardData;
-  connecting: boolean;
-  onViewProfile: () => void;
-  onConnect: () => void;
-}
-
-interface ConnectionPrimaryActionProps {
-  connectionState: CardConnectionState;
-  connecting: boolean;
-  onViewProfile: () => void;
-  onConnect: () => void;
-}
-
 const CARD_W = 220;
-const CARD_H = 180;
+const CARD_H = 160;
 
 function CardAvatar({ name, profilePicURL }: CardAvatarProps) {
   if (profilePicURL) {
@@ -58,7 +43,7 @@ function CardAvatar({ name, profilePicURL }: CardAvatarProps) {
   );
 }
 
-function PlayerCardProfileDetails({ card }: Pick<CardContentProps, 'card'>) {
+function PlayerCardProfileDetails({ card }: { card: PlayerCardData }) {
   const profile = card.profile;
   const program = profile?.programs?.[0];
   const semester = profile?.semester;
@@ -80,109 +65,14 @@ function PlayerCardProfileDetails({ card }: Pick<CardContentProps, 'card'>) {
   );
 }
 
-function ConnectionPrimaryAction({
-  connectionState,
-  connecting,
-  onViewProfile,
-  onConnect,
-}: ConnectionPrimaryActionProps) {
-  if (connectionState === 'connected') {
-    return (
-      <button
-        type="button"
-        onClick={onViewProfile}
-        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
-      >
-        <ExternalLink size={12} />
-        Ver perfil
-      </button>
-    );
-  }
-  if (connectionState === 'pending') {
-    return (
-      <div className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium">
-        <Clock size={12} />
-        Solicitud enviada
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onConnect}
-      disabled={connecting}
-      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
-    >
-      {connecting ? (
-        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-      ) : (
-        <UserPlus size={12} />
-      )}
-      Conectar
-    </button>
-  );
-}
-
-function PlayerCardContent(props: CardContentProps) {
-  const { card, connecting, onViewProfile, onConnect } = props;
-  const interests = card.profile?.interests ?? [];
-  const profilePicURL = card.profile?.profilePicURL;
-
-  return (
-    <>
-      <div className="flex items-center gap-3 p-3 pb-2">
-        <div className="relative flex-shrink-0">
-          <CardAvatar name={card.name} profilePicURL={profilePicURL} />
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
-        </div>
-        <PlayerCardProfileDetails card={card} />
-      </div>
-
-      {interests.length > 0 && (
-        <div className="px-3 pb-2 flex flex-wrap gap-1">
-          {interests.slice(0, 3).map((interest) => (
-            <span
-              key={interest.id}
-              className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
-            >
-              {interest.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="mx-3 border-t border-border" />
-
-      <div className="p-2.5 flex gap-2">
-        <ConnectionPrimaryAction
-          connectionState={card.connectionState}
-          connecting={connecting}
-          onViewProfile={onViewProfile}
-          onConnect={onConnect}
-        />
-        <button
-          type="button"
-          onClick={onViewProfile}
-          className="flex items-center justify-center p-1.5 rounded-xl bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-          aria-label="Ver perfil completo"
-        >
-          <ExternalLink size={13} />
-        </button>
-      </div>
-    </>
-  );
-}
-
 export const PlayerCard: React.FC<PlayerCardProps> = ({
   card,
   loading,
   viewportWidth,
   viewportHeight,
   onClose,
-  onConnect,
 }) => {
   const navigate = useNavigate();
-  const [connecting, setConnecting] = React.useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -205,16 +95,6 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       document.removeEventListener('mousedown', handler);
     };
   }, [onClose]);
-
-  const handleConnect = async () => {
-    if (!card) return;
-    setConnecting(true);
-    try {
-      await onConnect(card.profileId);
-    } finally {
-      setConnecting(false);
-    }
-  };
 
   const getPosition = () => {
     if (!card) return { left: 0, top: 0 };
@@ -241,13 +121,45 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       </div>
     );
   } else if (card) {
+    const interests = card.profile?.interests ?? [];
+    const profilePicURL = card.profile?.profilePicURL;
+
     cardBody = (
-      <PlayerCardContent
-        card={card}
-        connecting={connecting}
-        onViewProfile={viewProfile}
-        onConnect={handleConnect}
-      />
+      <>
+        <div className="flex items-center gap-3 p-3 pb-2">
+          <div className="relative flex-shrink-0">
+            <CardAvatar name={card.name} profilePicURL={profilePicURL} />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
+          </div>
+          <PlayerCardProfileDetails card={card} />
+        </div>
+
+        {interests.length > 0 && (
+          <div className="px-3 pb-2 flex flex-wrap gap-1">
+            {interests.slice(0, 3).map((interest) => (
+              <span
+                key={interest.id}
+                className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
+              >
+                {interest.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mx-3 border-t border-border" />
+
+        <div className="p-2.5 flex gap-2">
+          <button
+            type="button"
+            onClick={viewProfile}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <ExternalLink size={12} />
+            Ver perfil
+          </button>
+        </div>
+      </>
     );
   }
 
