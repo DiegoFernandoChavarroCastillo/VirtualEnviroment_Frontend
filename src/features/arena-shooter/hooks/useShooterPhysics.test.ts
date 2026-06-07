@@ -14,7 +14,7 @@ beforeEach(() => {
     shield: { durationMs: 15000 },
     arenaConfig: {
       arena: { width: 1600, height: 1200 },
-      player: { radius: 20, speed: 5, maxLives: 3 },
+      player: { radius: 20, speed: 5, maxHealth: 100 },
       projectile: { radius: 6 },
       gameplay: {
         maxPlayers: 6,

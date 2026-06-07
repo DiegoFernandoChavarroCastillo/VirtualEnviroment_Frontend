@@ -12,6 +12,8 @@ import {
   RocketExplosionPayload,
   ShieldAbsorbedPayload,
   GameConfig,
+  PickupBox,
+  PickupCollectedPayload,
 } from '../types/arena-shooter.types';
 import { realTimeURL } from '@/shared/lib/api';
 import { useAuth } from '@/features/auth/contexts/AuthContext';
@@ -38,6 +40,8 @@ interface UseShooterSocketProps {
   onRoomFull?: () => void;
   onConnectionLost?: () => void;
   onReconnected?: () => void;
+  onPickupState?: (pickups: PickupBox[]) => void;
+  onPickupCollected?: (payload: PickupCollectedPayload) => void;
 }
 
 export const useShooterSocket = ({
@@ -56,6 +60,8 @@ export const useShooterSocket = ({
   onRoomFull,
   onConnectionLost,
   onReconnected,
+  onPickupState,
+  onPickupCollected,
 }: UseShooterSocketProps) => {
   const { token } = useAuth();
   const socketRef = useRef<Socket | null>(null);
@@ -82,6 +88,8 @@ export const useShooterSocket = ({
     onRoomFull,
     onConnectionLost,
     onReconnected,
+    onPickupState,
+    onPickupCollected,
   });
 
   useEffect(() => {
@@ -95,14 +103,19 @@ export const useShooterSocket = ({
       onLastPlayerStanding,
       onReturnToVirtualWorld,
       onRocketExplosion,
+      onShieldAbsorbed,
       onRoomFull,
       onConnectionLost,
       onReconnected,
+      onPickupState,
+      onPickupCollected,
     };
   }, [
     onSnapshot, onRoomState, onPlayerHit, onPlayerEliminated,
     onPlayerLeft, onPlayerJoined, onLastPlayerStanding,
-    onReturnToVirtualWorld, onRocketExplosion, onShieldAbsorbed, onRoomFull, onConnectionLost, onReconnected,
+    onReturnToVirtualWorld, onRocketExplosion, onShieldAbsorbed, onRoomFull,
+    onConnectionLost, onReconnected,
+    onPickupState, onPickupCollected,
   ]);
 
   useEffect(() => {
@@ -188,6 +201,14 @@ export const useShooterSocket = ({
       setGameConfig(config);
     });
 
+    socket.on('pickupState', (pickups: PickupBox[]) => {
+      callbacks.current.onPickupState?.(pickups);
+    });
+
+    socket.on('pickupCollected', (payload: PickupCollectedPayload) => {
+      callbacks.current.onPickupCollected?.(payload);
+    });
+
     return () => {
       intentionalReturn = true; // Mark as intentional before cleanup disconnect
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
@@ -208,8 +229,8 @@ export const useShooterSocket = ({
     socketRef.current?.emit('playerInput', input);
   }, []);
 
-  const emitCollectItem = useCallback((itemType: string) => {
-    socketRef.current?.emit('collectItem', { itemType });
+  const emitCollectItem = useCallback((itemType: string, x: number, y: number) => {
+    socketRef.current?.emit('collectItem', { itemType, x, y });
   }, []);
 
   return { isConnected, isReconnecting, emitPlayerInput, emitCollectItem, gameConfig: gameConfigRef };

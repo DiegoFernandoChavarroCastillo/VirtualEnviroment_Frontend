@@ -22,6 +22,8 @@ import {
   ShieldAbsorbedPayload,
   WeaponType,
   ArenaConfig,
+  PickupBox,
+  PickupCollectedPayload,
 } from '../types/arena-shooter.types';
 import { getRandomSpawnPosition } from '@/shared/utils/spawnPosition';
 import { VirtualJoystick } from '@/shared/components/VirtualJoystick';
@@ -81,16 +83,18 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     structuresRef,
   });
 
-  const { checkPickupCollision, drawPickups, consumeAmmo, getActiveWeapon } = useWeaponPickups();
+  const { checkPickupCollision, drawPickups, consumeAmmo, getActiveWeapon, setWeapon } = useWeaponPickups();
   const [hudWeapon, setHudWeapon] = useState<{ type: WeaponType; ammo: number }>({ type: 'normal', ammo: 0 });
   const lastHudWeaponRef = useRef<{ type: WeaponType; ammo: number }>({ type: 'normal', ammo: 0 });
+  const [serverPickups, setServerPickups] = useState<PickupBox[]>([]);
+  const serverPickupsRef = useRef<PickupBox[]>([]);
 
   const { playShoot, playLaser, playRocket, playExplosion, playItemCollected } = useArenaSound();
 
   const [localStats, setLocalStats] = useState<ShooterPlayerInfo>({
     userId: localPlayer.userId,
     name: localPlayer.name,
-    lives: 3,
+    health: 100,
     kills: 0,
     deaths: 0,
   });
@@ -163,7 +167,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       const playerInfos: ShooterPlayerInfo[] = snapshot.players.map(p => ({
         userId: p.userId,
         name: p.name,
-        lives: p.lives,
+        health: p.health,
         kills: p.kills,
         deaths: p.deaths,
       }));
@@ -174,13 +178,13 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     if (serverPlayer) {
       reconcile({ x: serverPlayer.x, y: serverPlayer.y }, snapshot.tick);
       setLocalStats(prev => {
-        if (prev.lives !== serverPlayer.lives ||
+        if (prev.health !== serverPlayer.health ||
             prev.kills !== serverPlayer.kills ||
             prev.deaths !== serverPlayer.deaths) {
           return {
             userId: serverPlayer.userId,
             name: serverPlayer.name,
-            lives: serverPlayer.lives,
+            health: serverPlayer.health,
             kills: serverPlayer.kills,
             deaths: serverPlayer.deaths,
           };
@@ -210,10 +214,10 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       setTimeout(() => setIsHit(false), 200);
       triggerShake(8);
       addNotification('¡Te han dado!', 1500, 'default');
-      setLocalStats(prev => ({ ...prev, lives: p.livesRemaining }));
+      setLocalStats(prev => ({ ...prev, health: p.healthRemaining }));
     }
     setLeaderboard(prev => prev.map(pl =>
-      pl.userId === p.victimId ? { ...pl, lives: p.livesRemaining } : pl
+      pl.userId === p.victimId ? { ...pl, health: p.healthRemaining } : pl
     ));
     const victimPos = p.victimId === localPlayer.userId
       ? getLocalPlayerPos()
@@ -288,6 +292,14 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     onReturnToVirtualWorld: handleReturnToVirtualWorld,
     onRocketExplosion: handleRocketExplosion,
     onShieldAbsorbed: handleShieldAbsorbed,
+    onPickupState: (pickups) => { setServerPickups(pickups); serverPickupsRef.current = pickups; },
+    onPickupCollected: (payload) => {
+      setServerPickups(prev => {
+        const next = prev.filter(b => b.x !== payload.x || b.y !== payload.y);
+        serverPickupsRef.current = next;
+        return next;
+      });
+    },
   });
 
   useEffect(() => {
@@ -354,17 +366,26 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
 
       // Pickup logic
       const localPos = getLocalPlayerPos();
-      const pickedType = checkPickupCollision(localPos.x, localPos.y);
-      if (pickedType) {
+      const pickedBox = checkPickupCollision(localPos.x, localPos.y, serverPickupsRef.current);
+      if (pickedBox) {
+        const pt = pickedBox.type;
+        serverPickupsRef.current = serverPickupsRef.current.filter(b => b !== pickedBox);
+        setServerPickups([...serverPickupsRef.current]);
         triggerShake(5);
-        const pickupColor = pickedType === 'shield' ? '#3498db' : pickedType === 'life' ? '#e74c3c' : '#f1c40f';
+        const pickupColor = pt === 'shield' ? '#3498db' : pt === 'health' ? '#e74c3c' : '#f1c40f';
         particleSystemRef.current.emitExplosion(localPos.x, localPos.y, pickupColor, 15);
-        addNotification(`¡${pickedType.toUpperCase()} RECOGIDO!`, 2000, 'default');
+        addNotification(`¡${pt.toUpperCase()} RECOGIDO!`, 2000, 'default');
         playItemCollected();
-        if (pickedType === 'shield') {
+        if (pt === 'shield') {
           emitPlayerInput({ action: 'activateShield' });
-        } else if (pickedType === 'life') {
-          emitCollectItem('life');
+          emitCollectItem('shield', pickedBox.x, pickedBox.y);
+        } else if (pt === 'health') {
+          emitCollectItem('health', pickedBox.x, pickedBox.y);
+        } else {
+          const cfg = getGameConfig();
+          const ammo = (cfg?.weapons[pt]?.ammo ?? 0) as number;
+          setWeapon(pt as WeaponType, ammo);
+          emitCollectItem(pt, pickedBox.x, pickedBox.y);
         }
       }
 
@@ -511,7 +532,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     ctx.shadowBlur = 0;
 
     // Weapon pickups
-    drawPickups(ctx, camX, camY, VIEWPORT_W, VIEWPORT_H);
+    drawPickups(ctx, camX, camY, VIEWPORT_W, VIEWPORT_H, serverPickupsRef.current);
 
     const now = Date.now();
 
@@ -528,8 +549,11 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
 
       if (isLaser) {
         const beamLen = 80;
-        const ex = proj.x + proj.vx * beamLen;
-        const ey = proj.y + proj.vy * beamLen;
+        const lspeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy) || 1;
+        const nx = proj.vx / lspeed;
+        const ny = proj.vy / lspeed;
+        const ex = proj.x + nx * beamLen;
+        const ey = proj.y + ny * beamLen;
 
         // Glow exterior amplio
         ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
@@ -777,14 +801,13 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         ))}
         <div className={styles.localStatsPanel}>
           <div className={styles.statItem}>
-            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-              {Array.from({ length: Math.min(localStats.lives, 4) }).map((_, i) => (
-                <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="#e74c3c" style={{ filter: 'drop-shadow(0 0 3px #e74c3c)' }}>
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              ))}
+            <div className={styles.healthBarOuter}>
+              <div
+                className={styles.healthBarInner}
+                style={{ width: `${Math.max(0, (localStats.health / (arenaConfig?.player.maxHealth ?? 100)) * 100)}%` }}
+              />
             </div>
-            <span className={styles.statLabel}>Vidas</span>
+            <span className={styles.statLabel}>Salud</span>
           </div>
           <div className={styles.statItem}>
             <span className={styles.statValue}>{localStats.kills}</span>

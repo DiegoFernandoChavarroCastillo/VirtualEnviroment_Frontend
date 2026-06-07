@@ -16,7 +16,7 @@ export interface PhysicsBody extends Vec2 {
 export type WeaponType = 'normal' | 'shotgun' | 'rocket' | 'laser';
 
 /** Tipos de pickup que pueden aparecer en el mapa */
-export type PickupType = 'shotgun' | 'rocket' | 'shield' | 'life' | 'laser';
+export type PickupType = 'shotgun' | 'rocket' | 'shield' | 'health' | 'laser';
 
 /**
  * Posiciones pre-definidas de spawn de cajas de pickup en el mapa.
@@ -53,7 +53,7 @@ export const PICKUP_SPAWN_POSITIONS: ReadonlyArray<{ x: number; y: number }> = [
 export interface ShooterPlayerInfo {
   userId: string;
   name: string;
-  lives: number;   // 0–3
+  health: number;
   kills: number;
   deaths: number;
 }
@@ -114,7 +114,7 @@ export interface ShooterInput {
 export interface PlayerHitPayload {
   victimId: string;
   attackerId: string;
-  livesRemaining: number;
+  healthRemaining: number;
 }
 
 export interface PlayerEliminatedPayload {
@@ -151,6 +151,21 @@ export interface ShieldAbsorbedPayload {
   victimId: string;
 }
 
+// ─── Pickups (servidor → cliente) ──────────────────────────────────────────
+
+export interface PickupBox {
+  x: number;
+  y: number;
+  type: PickupType;
+  spawnTime: number;
+}
+
+export interface PickupCollectedPayload {
+  x: number;
+  y: number;
+  type: PickupType;
+}
+
 // ─── Props del componente principal ──────────────────────────────────────────
 
 export interface ArenaShooterProps {
@@ -181,7 +196,7 @@ export interface ShieldConfig {
 
 export interface ArenaConfig {
   arena: { width: number; height: number };
-  player: { radius: number; speed: number; maxLives: number };
+  player: { radius: number; speed: number; maxHealth: number };
   projectile: { radius: number };
   gameplay: {
     maxPlayers: number;

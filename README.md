@@ -30,7 +30,8 @@ src/
 │   ├── arena-shooter/              # Minijuego: Arena Shooter
 │   │   ├── components/             # ArenaShooter, ShooterZone
 │   │   ├── hooks/                  # useShooterSocket, useShooterPhysics,
-│   │   │                           # useShooterSnapshot, useWeaponPickups
+│   │   │                           # useShooterSnapshot, useWeaponPickups,
+│   │   │                           # useArenaSound
 │   │   ├── utils/                  # ParticleSystem, gameConfigStore
 │   │   ├── types/                  # Tipos del shooter
 │   │   └── styles/                 # CSS module
@@ -61,7 +62,7 @@ src/
 
 Las constantes del juego (velocidades, daños, dimensiones, etc.) se envían desde el backend vía WebSocket en el evento `gameConfig` después de `joinRoom`. El frontend las almacena en un singleton (`gameConfigStore`) y las hooks las leen en tiempo de ejecución. No hay constantes hardcodeadas duplicadas.
 
-Esto asegura que valores como `SHIELD_DURATION_MS`, `RECONCILE_THRESHOLD` y `CORRECTION_FRAMES` son siempre consistentes entre cliente y servidor.
+Esto asegura que valores como `SHIELD_DURATION_MS`, `RECONCILE_THRESHOLD` y `CORRECTION_FRAMES` son siempre consistentes entre cliente y servidor. El sistema de salud (`maxHealth: 100`), daños de armas y configuración de pickups también se reciben desde el servidor.
 
 ## Conexión al backend
 
@@ -83,7 +84,7 @@ El backend (NestJS + Socket.IO + PostgreSQL) corre por defecto en `http://localh
 
 ## Minijuegos
 
-- **Arena Shooter**: Batalla 2D multijugador en tiempo real (hasta 6 jugadores, 3 vidas). Pararse en la zona por 2s para entrar.
+- **Arena Shooter**: Batalla 2D multijugador en tiempo real (hasta 6 jugadores, 100 HP). Pararse en la zona por 2s para entrar. Sistema de salud con barra de vida, pickups server-authoritative (health, escudo, armas).
 - **Football Duel**: Partido 1v1 de fútbol. Pararse en una plataforma para activar el duel.
 
 ## Scripts
