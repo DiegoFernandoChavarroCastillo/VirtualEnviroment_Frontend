@@ -2,6 +2,8 @@
  * drawShooterZone — arena táctica top-down con estética militar/sci-fi.
  */
 
+import { CanvasIconPaths, drawGameIcon } from '@/shared/icons/canvasIcons';
+
 export type ZoneState = 'available' | 'highlighted' | 'locked';
 
 export interface ShooterZoneArea {
@@ -130,12 +132,31 @@ export function drawShooterZone({
 
   // ── Labels above ──────────────────────────────────────────────────────────
   ctx.fillStyle = isHighlighted ? '#ff6040' : '#cc3020';
-  ctx.font = 'bold 11px "DM Sans", system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🔫 Arena Shooter', cx, y - 18);
+  ctx.textBaseline = 'middle';
+  // Icon (shotgun) + label
+  const labelY = y - 14;
+  const iconSize = 16;
+  const text = 'Arena Shooter';
+  ctx.font = 'bold 11px "DM Sans", system-ui, sans-serif';
+  const textWidth = ctx.measureText(text).width;
+  const totalWidth = iconSize + 6 + textWidth;
+  const iconCx = cx - totalWidth / 2 + iconSize / 2;
+  drawGameIcon(
+    ctx,
+    CanvasIconPaths.Shotgun,
+    iconCx,
+    labelY,
+    iconSize,
+    isHighlighted ? '#ff8060' : '#cc3020',
+  );
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, iconCx + iconSize / 2 + 6, labelY);
   ctx.font = 'bold 10px "DM Sans", system-ui, sans-serif';
   ctx.fillStyle = isHighlighted ? '#ff8060' : '#aa2010';
-  ctx.fillText(`${activePlayers}/6 jugadores`, cx, y - 6);
+  ctx.textAlign = 'center';
+  ctx.fillText(`${activePlayers}/6 jugadores`, cx, y - 2);
 
   // ── Progress bar ──────────────────────────────────────────────────────────
   if (isHighlighted) {
@@ -225,9 +246,20 @@ function drawLockedZone(
   ctx.fillText(`${activePlayers}/6 jugadores`, cx, cy + 14);
 
   // Labels above
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labelY = y - 14;
+  const iconSize = 16;
+  const text = 'Arena Shooter';
   ctx.font = 'bold 11px "DM Sans", system-ui, sans-serif';
+  const textWidth = ctx.measureText(text).width;
+  const totalWidth = iconSize + 6 + textWidth;
+  const iconCx = cx - totalWidth / 2 + iconSize / 2;
+  drawGameIcon(ctx, CanvasIconPaths.Shotgun, iconCx, labelY, iconSize, 'rgba(255, 140, 120, 0.85)');
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(255, 140, 120, 0.85)';
-  ctx.fillText('🔫 Arena Shooter', cx, y - 18);
+  ctx.fillText(text, iconCx + iconSize / 2 + 6, labelY);
 }
 
 // ─── Crosshair icon ──────────────────────────────────────────────────────────

@@ -8,12 +8,9 @@ import { useWeaponPickups } from '../hooks/useWeaponPickups';
 import { useArenaSound } from '../hooks/useArenaSound';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { secureRandom, generateSecureId } from '@/shared/utils/secureRandom';
+import { Sbed, Lorc, Delapouite } from '@/shared/icons/gameIcons';
 import styles from '../styles/ArenaShooter.module.css';
 import {
-  ARENA_WIDTH,
-  ARENA_HEIGHT,
-  PLAYER_RADIUS,
-  PROJECTILE_RADIUS,
   CoverStructure,
   ShooterPlayerInfo,
   ShooterSnapshot,
@@ -24,8 +21,13 @@ import {
   RocketExplosionPayload,
   ShieldAbsorbedPayload,
   WeaponType,
+  ArenaConfig,
+  PickupBox,
+  PickupCollectedPayload,
 } from '../types/arena-shooter.types';
 import { getRandomSpawnPosition } from '@/shared/utils/spawnPosition';
+import { VirtualJoystick } from '@/shared/components/VirtualJoystick';
+import { getGameConfig } from '../utils/gameConfigStore';
 
 interface ArenaShooterProps {
   roomId: string;
@@ -63,25 +65,37 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
   const VIEWPORT_W = 800;
   const VIEWPORT_H = 600;
 
+  const configRef = useRef<ArenaConfig | null>(null);
+  const cfg = getGameConfig();
+  if (cfg) configRef.current = cfg.arenaConfig;
+  const arenaConfig = configRef.current;
+  const arenaW = arenaConfig?.arena.width ?? 1600;
+  const arenaH = arenaConfig?.arena.height ?? 1200;
+  const playerRadius = arenaConfig?.player.radius ?? 20;
+  const projectileRadius = arenaConfig?.projectile.radius ?? 6;
+
   const { pushSnapshot, getInterpolatedPlayer, getInterpolatedProjectiles, getLatestPlayers } =
     useShooterSnapshot();
 
   const { getLocalPlayerPos, getLastDirection, applyInput, stepPhysics, reconcile } = useShooterPhysics({
-    initialX: ARENA_WIDTH / 2,
-    initialY: ARENA_HEIGHT / 2,
+    initialX: arenaW / 2,
+    initialY: arenaH / 2,
     structuresRef,
   });
 
-  const { checkPickupCollision, drawPickups, consumeAmmo, getActiveWeapon } = useWeaponPickups();
+  const { checkPickupCollision, drawPickups, consumeAmmo, getActiveWeapon, setWeapon } = useWeaponPickups();
   const [hudWeapon, setHudWeapon] = useState<{ type: WeaponType; ammo: number }>({ type: 'normal', ammo: 0 });
   const lastHudWeaponRef = useRef<{ type: WeaponType; ammo: number }>({ type: 'normal', ammo: 0 });
+  const [serverPickups, setServerPickups] = useState<PickupBox[]>([]);
+  const serverPickupsRef = useRef<PickupBox[]>([]);
 
-  const { playShoot, playRocket, playExplosion, playItemCollected } = useArenaSound();
+  const { playShoot, playLaser, playRocket, playExplosion, playItemCollected } = useArenaSound();
 
   const [localStats, setLocalStats] = useState<ShooterPlayerInfo>({
     userId: localPlayer.userId,
     name: localPlayer.name,
-    lives: 3,
+    health: 100,
+    shield: 0,
     kills: 0,
     deaths: 0,
   });
@@ -154,7 +168,8 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       const playerInfos: ShooterPlayerInfo[] = snapshot.players.map(p => ({
         userId: p.userId,
         name: p.name,
-        lives: p.lives,
+        health: p.health,
+        shield: p.shield,
         kills: p.kills,
         deaths: p.deaths,
       }));
@@ -165,13 +180,15 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     if (serverPlayer) {
       reconcile({ x: serverPlayer.x, y: serverPlayer.y }, snapshot.tick);
       setLocalStats(prev => {
-        if (prev.lives !== serverPlayer.lives ||
+        if (prev.health !== serverPlayer.health ||
+            prev.shield !== serverPlayer.shield ||
             prev.kills !== serverPlayer.kills ||
             prev.deaths !== serverPlayer.deaths) {
           return {
             userId: serverPlayer.userId,
             name: serverPlayer.name,
-            lives: serverPlayer.lives,
+            health: serverPlayer.health,
+            shield: serverPlayer.shield,
             kills: serverPlayer.kills,
             deaths: serverPlayer.deaths,
           };
@@ -201,10 +218,10 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       setTimeout(() => setIsHit(false), 200);
       triggerShake(8);
       addNotification('¡Te han dado!', 1500, 'default');
-      setLocalStats(prev => ({ ...prev, lives: p.livesRemaining }));
+      setLocalStats(prev => ({ ...prev, health: p.healthRemaining }));
     }
     setLeaderboard(prev => prev.map(pl =>
-      pl.userId === p.victimId ? { ...pl, lives: p.livesRemaining } : pl
+      pl.userId === p.victimId ? { ...pl, health: p.healthRemaining } : pl
     ));
     const victimPos = p.victimId === localPlayer.userId
       ? getLocalPlayerPos()
@@ -267,7 +284,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     particleSystemRef.current.emitExplosion(victimPos.x, victimPos.y, '#3498db', 20);
   }, [localPlayer.userId, addNotification, getInterpolatedPlayer, getLocalPlayerPos]);
 
-  const { emitPlayerInput, isConnected } = useShooterSocket({
+  const { emitPlayerInput, emitCollectItem, isConnected } = useShooterSocket({
     roomId,
     playerName: localPlayer.name,
     onSnapshot: handleSnapshot,
@@ -279,6 +296,14 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     onReturnToVirtualWorld: handleReturnToVirtualWorld,
     onRocketExplosion: handleRocketExplosion,
     onShieldAbsorbed: handleShieldAbsorbed,
+    onPickupState: (pickups) => { setServerPickups(pickups); serverPickupsRef.current = pickups; },
+    onPickupCollected: (payload) => {
+      setServerPickups(prev => {
+        const next = prev.filter(b => b.x !== payload.x || b.y !== payload.y);
+        serverPickupsRef.current = next;
+        return next;
+      });
+    },
   });
 
   useEffect(() => {
@@ -315,7 +340,6 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
 
-    let lastShootTime = 0;
     let lastMoveEmitTime = 0;
     let lastDx = 0;
     let lastDy = 0;
@@ -346,14 +370,26 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
 
       // Pickup logic
       const localPos = getLocalPlayerPos();
-      const pickedType = checkPickupCollision(localPos.x, localPos.y);
-      if (pickedType) {
+      const pickedBox = checkPickupCollision(localPos.x, localPos.y, serverPickupsRef.current);
+      if (pickedBox) {
+        const pt = pickedBox.type;
+        serverPickupsRef.current = serverPickupsRef.current.filter(b => b !== pickedBox);
+        setServerPickups([...serverPickupsRef.current]);
         triggerShake(5);
-        particleSystemRef.current.emitExplosion(localPos.x, localPos.y, pickedType === 'shield' ? '#3498db' : '#f1c40f', 15);
-        addNotification(`¡${pickedType.toUpperCase()} RECOGIDO!`, 2000, 'default');
+        const pickupColor = pt === 'shield' ? '#3498db' : pt === 'health' ? '#e74c3c' : '#f1c40f';
+        particleSystemRef.current.emitExplosion(localPos.x, localPos.y, pickupColor, 15);
+        addNotification(`¡${pt.toUpperCase()} RECOGIDO!`, 2000, 'default');
         playItemCollected();
-        if (pickedType === 'shield') {
+        if (pt === 'shield') {
           emitPlayerInput({ action: 'activateShield' });
+          emitCollectItem('shield', pickedBox.x, pickedBox.y);
+        } else if (pt === 'health') {
+          emitCollectItem('health', pickedBox.x, pickedBox.y);
+        } else {
+          const cfg = getGameConfig();
+          const ammo = (cfg?.weapons[pt]?.ammo ?? 0) as number;
+          setWeapon(pt as WeaponType, ammo);
+          emitCollectItem(pt, pickedBox.x, pickedBox.y);
         }
       }
 
@@ -368,17 +404,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       }
 
       const wantsToShoot = keys[' '] || keys['enter'] || isMouseDown || shootPendingMobile.current;
-      let canShoot = false;
-
-      if (wantsToShoot) {
-        if (currentWeapon.type === 'shotgun') {
-          canShoot = consumeAmmo();
-        } else {
-          if (now - lastShootTime > 300) {
-            canShoot = consumeAmmo();
-          }
-        }
-      }
+      const canShoot = wantsToShoot ? consumeAmmo() : false;
 
       if (canShoot) {
         let aimDx = 0;
@@ -401,7 +427,11 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         emitPlayerInput({ action: 'shoot', aimDx, aimDy, weaponType: currentWeapon.type });
         const angle = Math.atan2(aimDy, aimDx);
 
-        if (currentWeapon.type === 'shotgun') {
+        if (currentWeapon.type === 'laser') {
+          particleSystemRef.current.emitLaserMuzzleFlash(localPos.x + aimDx * 25, localPos.y + aimDy * 25, angle);
+          triggerShake(4);
+          playLaser();
+        } else if (currentWeapon.type === 'shotgun') {
           particleSystemRef.current.emitShotgunMuzzleFlash(localPos.x + aimDx * 25, localPos.y + aimDy * 25, angle);
           triggerShake(8);
           playShoot();
@@ -415,7 +445,6 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
           playShoot();
         }
 
-        lastShootTime = now;
         shootPendingMobile.current = false;
       }
 
@@ -450,8 +479,8 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     const localPos = getLocalPlayerPos();
 
     // Update camera (centered on player, clamped to map)
-    const camX = Math.max(0, Math.min(ARENA_WIDTH - VIEWPORT_W, localPos.x - VIEWPORT_W / 2));
-    const camY = Math.max(0, Math.min(ARENA_HEIGHT - VIEWPORT_H, localPos.y - VIEWPORT_H / 2));
+    const camX = Math.max(0, Math.min(arenaW - VIEWPORT_W, localPos.x - VIEWPORT_W / 2));
+    const camY = Math.max(0, Math.min(arenaH - VIEWPORT_H, localPos.y - VIEWPORT_H / 2));
     cameraRef.current = { x: camX, y: camY };
 
     ctx.save();
@@ -507,7 +536,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     ctx.shadowBlur = 0;
 
     // Weapon pickups
-    drawPickups(ctx, camX, camY, VIEWPORT_W, VIEWPORT_H);
+    drawPickups(ctx, camX, camY, VIEWPORT_W, VIEWPORT_H, serverPickupsRef.current);
 
     const now = Date.now();
 
@@ -519,9 +548,55 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
 
       const isRocket = proj.weaponType === 'rocket';
       const isShotgun = proj.weaponType === 'shotgun';
-      const radius = isRocket ? PROJECTILE_RADIUS * 1.5 : PROJECTILE_RADIUS;
+      const isLaser = proj.weaponType === 'laser';
+      const radius = isRocket ? projectileRadius * 1.5 : projectileRadius;
 
-      if (isRocket) {
+      if (isLaser) {
+        const beamLen = 80;
+        const lspeed = Math.sqrt(proj.vx * proj.vx + proj.vy * proj.vy) || 1;
+        const nx = proj.vx / lspeed;
+        const ny = proj.vy / lspeed;
+        const ex = proj.x + nx * beamLen;
+        const ey = proj.y + ny * beamLen;
+
+        // Glow exterior amplio
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = '#2ecc71';
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Capa media neon
+        ctx.strokeStyle = '#2ecc71';
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = '#2ecc71';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Core blanco brillante
+        ctx.strokeStyle = '#ffffff';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#a3e4d7';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        // Punta del haz
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = '#2ecc71';
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      } else if (isRocket) {
         const angle = Math.atan2(proj.vy, proj.vx);
         ctx.translate(proj.x, proj.y);
         ctx.rotate(angle);
@@ -565,19 +640,19 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     latestPlayers.forEach(p => {
       const isLocal = p.userId === localPlayer.userId;
       const pos = isLocal ? localPos : getInterpolatedPlayer(p.userId, now);
-      drawPlayer(ctx, pos.x, pos.y, p.name, isLocal, p.shielded);
+      drawPlayer(ctx, pos.x, pos.y, p.name, isLocal, p.shield);
     });
 
     ctx.restore();
   };
 
-  const drawPlayer = (ctx: CanvasRenderingContext2D, x: number, y: number, name: string, isLocal: boolean, isShielded?: boolean) => {
+  const drawPlayer = (ctx: CanvasRenderingContext2D, x: number, y: number, name: string, isLocal: boolean, shield: number) => {
     ctx.save();
 
     // Shield Aura
-    if (isShielded) {
+    if (shield > 0) {
       ctx.beginPath();
-      ctx.arc(x, y, PLAYER_RADIUS + 8, 0, Math.PI * 2);
+      ctx.arc(x, y, playerRadius + 8, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(52, 152, 219, 0.3)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(52, 152, 219, 0.8)';
@@ -589,7 +664,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     }
 
     ctx.beginPath();
-    ctx.arc(x, y, PLAYER_RADIUS, 0, Math.PI * 2);
+    ctx.arc(x, y, playerRadius, 0, Math.PI * 2);
     ctx.fillStyle = isLocal ? '#f1c40f' : '#2980b9';
     ctx.shadowBlur = 15;
     ctx.shadowColor = isLocal ? '#f1c40f' : '#3498db';
@@ -603,7 +678,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px "DM Sans", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(displayName, x, y - PLAYER_RADIUS - 10);
+    ctx.fillText(displayName, x, y - playerRadius - 10);
     ctx.restore();
   };
 
@@ -617,7 +692,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
       {/* ── Aviso de orientación (solo móvil en portrait) ────────────────── */}
       {isMobileDevice && isPortrait && (
         <div className={styles.rotateOverlay}>
-          <div className={styles.rotateIcon}>⟳</div>
+          <div className={styles.rotateIcon}><Delapouite.ClockwiseRotation size={64} color="#f1c40f" /></div>
           <p className={styles.rotateText}>Gira tu teléfono para jugar</p>
           <p className={styles.rotateSubtext}>Este juego requiere orientación horizontal</p>
         </div>
@@ -697,7 +772,13 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         {/* Weapon HUD — esquina inferior-derecha del canvas */}
         <div className={`${styles.weaponHUD} ${hudWeapon.type !== 'normal' ? styles[hudWeapon.type] : styles.hidden}`}>
           <div className={styles.weaponHUDIcon}>
-            {hudWeapon.type === 'shotgun' ? '🔫' : '🚀'}
+            {hudWeapon.type === 'shotgun' ? (
+              <Sbed.Shotgun size={28} color="currentColor" />
+            ) : hudWeapon.type === 'laser' ? (
+              <Lorc.LaserBlast size={28} color="currentColor" />
+            ) : (
+              <Lorc.Rocket size={28} color="currentColor" />
+            )}
           </div>
           <div className={styles.weaponHUDInfo}>
             <div className={styles.weaponHUDName}>{hudWeapon.type.toUpperCase()}</div>
@@ -723,9 +804,27 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
           </div>
         ))}
         <div className={styles.localStatsPanel}>
-          <div className={styles.statItem}>
-            <span className={styles.statValue} style={{ color: '#e74c3c' }}>{localStats.lives}</span>
-            <span className={styles.statLabel}>Vidas</span>
+          <div className={styles.barRow}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#e74c3c" style={{ filter: 'drop-shadow(0 0 3px #e74c3c)', flexShrink: 0 }}>
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            <div className={styles.healthBarOuter}>
+              <div
+                className={styles.healthBarInner}
+                style={{ width: `${Math.max(0, (localStats.health / (arenaConfig?.player.maxHealth ?? 100)) * 100)}%` }}
+              />
+            </div>
+          </div>
+          <div className={styles.barRow}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#3498db" style={{ filter: 'drop-shadow(0 0 3px #3498db)', flexShrink: 0 }}>
+              <polygon points="13,2 4,14 12,14 11,22 20,10 12,10" />
+            </svg>
+            <div className={styles.shieldBarOuter}>
+              <div
+                className={styles.shieldBarInner}
+                style={{ width: `${Math.max(0, (localStats.shield / (getGameConfig()?.shield?.maxShield ?? 50)) * 100)}%` }}
+              />
+            </div>
           </div>
           <div className={styles.statItem}>
             <span className={styles.statValue}>{localStats.kills}</span>
@@ -739,7 +838,7 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
         <>
           {/* Joystick — esquina inferior izquierda de la pantalla */}
           <div style={{ position: 'fixed', bottom: '24px', left: '24px', zIndex: 200, touchAction: 'none' }}>
-            <DuelJoystick onMove={(dx, dy) => setMobileMove({ dx, dy })} />
+            <VirtualJoystick onMove={(dx, dy) => setMobileMove({ dx, dy })} />
           </div>
           {/* Botón FUEGO — esquina inferior derecha de la pantalla, antes del scoreboard */}
           <div style={{ position: 'fixed', bottom: '24px', right: '180px', zIndex: 200 }}>
@@ -790,7 +889,10 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
             animate={{ opacity: 1, y: 0 }}
             className={styles.gameOverOverlay}
           >
-            <h1 style={{ fontSize: '64px', margin: 0 }}>🏆 ¡VICTORIA!</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: 0 }}>
+              <Lorc.Trophy size={64} color="#f1c40f" />
+              <h1 style={{ fontSize: '64px', margin: 0 }}>¡VICTORIA!</h1>
+            </div>
             <p style={{ opacity: 0.7 }}>Eres el último sobreviviente.</p>
             <button
               className={styles.returnButton}
@@ -805,96 +907,5 @@ export const ArenaShooter: React.FC<ArenaShooterProps> = ({
   );
 };
 
-// ─── Joystick virtual ────────────────────────────────────────────────────────
-
-const JOY_RADIUS = 56;
-const JOY_KNOB = 24;
-
-const DuelJoystick: React.FC<{ onMove: (dx: number, dy: number) => void }> = ({ onMove }) => {
-  const baseRef = useRef<HTMLDivElement>(null);
-  const knobRef = useRef<HTMLDivElement>(null);
-  const activeId = useRef<number | null>(null);
-
-  const calc = (cx: number, cy: number, clientX: number, clientY: number) => {
-    const rawDx = clientX - cx;
-    const rawDy = clientY - cy;
-    const dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    const max = JOY_RADIUS - JOY_KNOB;
-    const clamped = Math.min(dist, max);
-    const angle = Math.atan2(rawDy, rawDx);
-    return {
-      dx: dist > 0 ? (Math.cos(angle) * clamped) / max : 0,
-      dy: dist > 0 ? (Math.sin(angle) * clamped) / max : 0,
-      kx: Math.cos(angle) * clamped,
-      ky: Math.sin(angle) * clamped,
-    };
-  };
-
-  const setKnob = (kx: number, ky: number) => {
-    if (knobRef.current) knobRef.current.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (activeId.current !== null) return;
-    const t = e.changedTouches[0];
-    activeId.current = t.identifier;
-    const rect = baseRef.current!.getBoundingClientRect();
-    const { dx, dy, kx, ky } = calc(rect.left + rect.width / 2, rect.top + rect.height / 2, t.clientX, t.clientY);
-    setKnob(kx, ky);
-    onMove(dx, dy);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = Array.from(e.changedTouches).find(x => x.identifier === activeId.current);
-    if (!t) return;
-    e.preventDefault();
-    const rect = baseRef.current!.getBoundingClientRect();
-    const { dx, dy, kx, ky } = calc(rect.left + rect.width / 2, rect.top + rect.height / 2, t.clientX, t.clientY);
-    setKnob(kx, ky);
-    onMove(dx, dy);
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!Array.from(e.changedTouches).find(x => x.identifier === activeId.current)) return;
-    activeId.current = null;
-    setKnob(0, 0);
-    onMove(0, 0);
-  };
-
-  return (
-    <div
-      ref={baseRef}
-      style={{
-        width: JOY_RADIUS * 2,
-        height: JOY_RADIUS * 2,
-        borderRadius: '50%',
-        background: 'rgba(255,255,255,0.12)',
-        border: '2px solid rgba(255,255,255,0.25)',
-        position: 'relative',
-        touchAction: 'none',
-      }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
-    >
-      <div
-        ref={knobRef}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: JOY_KNOB * 2,
-          height: JOY_KNOB * 2,
-          borderRadius: '50%',
-          background: 'rgba(255,255,255,0.9)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          transform: 'translate(-50%, -50%)',
-          pointerEvents: 'none',
-        }}
-      />
-    </div>
-  );
-};
 
 export default ArenaShooter;

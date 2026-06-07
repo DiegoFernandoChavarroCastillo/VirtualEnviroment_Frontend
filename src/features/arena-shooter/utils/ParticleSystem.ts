@@ -168,6 +168,26 @@ export class ParticleSystem {
   }
 
   /**
+   * Muzzle flash especial para laser: partículas verdes rápidas
+   */
+  emitLaserMuzzleFlash(x: number, y: number, angle: number) {
+    for (let i = 0; i < 8; i++) {
+      const spread = (Math.random() - 0.5) * 0.3;
+      const speed = Math.random() * 6 + 4;
+      this.add({
+        x,
+        y,
+        vx: Math.cos(angle + spread) * speed,
+        vy: Math.sin(angle + spread) * speed,
+        life: 8,
+        color: Math.random() > 0.5 ? '#2ecc71' : '#27ae60',
+        size: Math.random() * 2 + 1,
+        type: 'spark',
+      });
+    }
+  }
+
+  /**
    * Muzzle flash especial para escopeta: dispersión más amplia y más partículas.
    */
   emitShotgunMuzzleFlash(x: number, y: number, angle: number) {

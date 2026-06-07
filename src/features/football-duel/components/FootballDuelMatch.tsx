@@ -17,91 +17,14 @@ import ReactConfetti from 'react-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
 import GoalParticles from './GoalParticles';
 import { getRandomSpawnPosition } from '@/shared/utils/spawnPosition';
+import { VirtualJoystick } from '@/shared/components/VirtualJoystick';
+import { Delapouite, Lorc } from '@/shared/icons/gameIcons';
 
 // â”€â”€â”€ Field constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FIELD_MARGIN = 20;
 const PLAYER_RADIUS = 20;
 const FALLBACK_RETURN_DELAY_MS = 10_000;
 
-// â”€â”€â”€ Mobile Joystick â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const JOY_RADIUS = 56;
-const JOY_KNOB = 24;
-
-interface DuelJoystickProps {
-  onMove: (dx: number, dy: number) => void;
-}
-
-const DuelJoystick: React.FC<DuelJoystickProps> = ({ onMove }) => {
-  const baseRef = useRef<HTMLDivElement>(null);
-  const knobRef = useRef<HTMLDivElement>(null);
-  const activeId = useRef<number | null>(null);
-
-  const calc = (cx: number, cy: number, clientX: number, clientY: number) => {
-    const rawDx = clientX - cx;
-    const rawDy = clientY - cy;
-    const dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    const max = JOY_RADIUS - JOY_KNOB;
-    const clamped = Math.min(dist, max);
-    const angle = Math.atan2(rawDy, rawDx);
-    return {
-      dx: dist > 0 ? (Math.cos(angle) * clamped) / max : 0,
-      dy: dist > 0 ? (Math.sin(angle) * clamped) / max : 0,
-      kx: Math.cos(angle) * clamped,
-      ky: Math.sin(angle) * clamped,
-    };
-  };
-
-  const setKnob = (kx: number, ky: number) => {
-    if (knobRef.current) knobRef.current.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (activeId.current !== null) return;
-    const t = e.changedTouches[0];
-    activeId.current = t.identifier;
-    const rect = baseRef.current!.getBoundingClientRect();
-    const { dx, dy, kx, ky } = calc(rect.left + rect.width / 2, rect.top + rect.height / 2, t.clientX, t.clientY);
-    setKnob(kx, ky); onMove(dx, dy);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = Array.from(e.changedTouches).find(x => x.identifier === activeId.current);
-    if (!t) return;
-    e.preventDefault();
-    const rect = baseRef.current!.getBoundingClientRect();
-    const { dx, dy, kx, ky } = calc(rect.left + rect.width / 2, rect.top + rect.height / 2, t.clientX, t.clientY);
-    setKnob(kx, ky); onMove(dx, dy);
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!Array.from(e.changedTouches).find(x => x.identifier === activeId.current)) return;
-    activeId.current = null;
-    setKnob(0, 0); onMove(0, 0);
-  };
-
-  return (
-    <div
-      ref={baseRef}
-      className="relative select-none touch-none"
-      style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: '2px solid rgba(255,255,255,0.25)' }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
-      aria-label="Joystick de movimiento"
-    >
-      <div
-        ref={knobRef}
-        style={{
-          position: 'absolute', top: '50%', left: '50%',
-          width: JOY_KNOB * 2, height: JOY_KNOB * 2, borderRadius: '50%',
-          background: 'rgba(255,255,255,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          transform: 'translate(-50%, -50%)', pointerEvents: 'none',
-        }}
-      />
-    </div>
-  );
-};
 
 interface FootballDuelMatchProps {
   matchId: string;
@@ -127,6 +50,7 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const [overlay, setOverlay] = useState<OverlayType>(null);
   const [overlayText, setOverlayText] = useState('');
+  const [loserName, setLoserName] = useState<string | null>(null);
   const [score, setScore] = useState<Record<string, number>>({
     [localPlayer.userId]: 0,
     [opponent.userId]: 0,
@@ -161,7 +85,7 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
     (payload: { scorerId: string; score: Record<string, number> }) => {
       setScore({ ...payload.score });
       setOverlay('goal');
-      setOverlayText('⚽ ¡GOL!');
+      setOverlayText('¡GOL!');
 
       // Instant confetti burst
       confetti({
@@ -188,14 +112,15 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
 
       if (payload.isDraw) {
         setOverlay('draw');
-        setOverlayText('🤝 ¡Empate!');
+        setOverlayText('¡Empate!');
       } else if (payload.winnerId === localPlayer.userId) {
         setOverlay('win');
-        setOverlayText('🏆 ¡Ganaste!');
+        setOverlayText('¡Ganaste!');
         setShowWinConfetti(true);
       } else {
         setOverlay('lose');
-        setOverlayText(`😔 ¡Perdiste! Ganó ${payload.winnerName ?? 'el oponente'}`);
+        setOverlayText('¡Perdiste!');
+        setLoserName(payload.winnerName ?? 'el oponente');
       }
 
       // Fallback: if returnToVirtualWorld doesn't arrive in 10 s, force return
@@ -567,13 +492,32 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
                     : 'bg-green-500/90 border-green-300 text-white'
                 }`}
               >
-                <motion.p 
-                  animate={{ scale: [1, 1.1, 1] }} 
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
                   transition={{ repeat: Infinity, duration: 0.5 }}
-                  className="text-6xl font-black drop-shadow-lg"
+                  className="flex items-center justify-center gap-4 drop-shadow-lg"
                 >
-                  {overlayText}
-                </motion.p>
+                  {overlay === 'goal' && (
+                    <Delapouite.SoccerBall size={56} color="currentColor" />
+                  )}
+                  {overlay === 'win' && (
+                    <Lorc.Trophy size={56} color="currentColor" />
+                  )}
+                  {overlay === 'draw' && (
+                    <Delapouite.ShakingHands size={56} color="currentColor" />
+                  )}
+                  {overlay === 'lose' && (
+                    <Lorc.TearTracks size={56} color="currentColor" />
+                  )}
+                  <p className="text-6xl font-black m-0">
+                    {overlayText}
+                  </p>
+                </motion.div>
+                {overlay === 'lose' && loserName && (
+                  <p className="text-sm mt-1 font-semibold opacity-90">
+                    Ganó {loserName}
+                  </p>
+                )}
                 {(overlay === 'win' || overlay === 'lose' || overlay === 'draw') && (
                   <motion.p 
                     initial={{ opacity: 0 }}
@@ -593,14 +537,14 @@ const FootballDuelMatch: React.FC<FootballDuelMatchProps> = ({
       {/* Controls */}
       {isMobile ? (
         <div className="flex items-center justify-between w-full max-w-[800px] px-6 py-3 bg-black/40">
-          <DuelJoystick onMove={(dx, dy) => { joystickRef.current = { dx, dy }; }} />
+          <VirtualJoystick onMove={(dx, dy) => { joystickRef.current = { dx, dy }; }} />
           <button
             type="button"
-            className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 text-white text-2xl font-black active:bg-white/40 transition-colors select-none touch-none"
+            className="w-16 h-16 rounded-full bg-white/20 border-2 border-white/40 text-white active:bg-white/40 transition-colors select-none touch-none flex items-center justify-center"
             onTouchStart={(e) => { e.preventDefault(); kickPendingRef.current = true; }}
             aria-label="Patear"
           >
-            âš½
+            <Delapouite.SoccerBall size={32} color="currentColor" />
           </button>
         </div>
       ) : (

@@ -1,4 +1,5 @@
 import { PadState, PadId, PAD_AREAS } from '../types/football-duel.types';
+import { CanvasIconPaths, drawGameIcon } from '@/shared/icons/canvasIcons';
 
 interface DrawDuelPadsOptions {
   ctx: CanvasRenderingContext2D;
@@ -201,12 +202,24 @@ function drawLockedPad(
   }
 
   // Labels above
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labelY = y - 14;
+  const iconSize = 16;
+  const text = 'Fútbol 1v1';
   ctx.font = 'bold 11px "DM Sans", system-ui, sans-serif';
+  const textWidth = ctx.measureText(text).width;
+  const totalWidth = iconSize + 6 + textWidth;
+  const iconCx = cx - totalWidth / 2 + iconSize / 2;
+  drawGameIcon(ctx, CanvasIconPaths.SoccerBall, iconCx, labelY, iconSize, 'rgba(180, 180, 190, 0.85)');
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(180, 180, 190, 0.85)';
-  ctx.fillText('⚽ Fútbol 1v1', cx, y - 18);
+  ctx.fillText(text, iconCx + iconSize / 2 + 6, labelY);
   ctx.font = 'bold 10px "DM Sans", system-ui, sans-serif';
   ctx.fillStyle = 'rgba(160, 160, 170, 0.85)';
-  ctx.fillText(pad.padId === 'pad-a' ? 'Cancha A' : 'Cancha B', cx, y - 6);
+  ctx.textAlign = 'center';
+  ctx.fillText(pad.padId === 'pad-a' ? 'Cancha A' : 'Cancha B', cx, y - 2);
 }
 
 function drawActivationArc(
@@ -248,18 +261,37 @@ export function drawDuelPads({ ctx, padStates, localPlayerOverlap }: DrawDuelPad
 
     // ── Labels above each pad ──────────────────────────────────────────────────
     if (!isLocked) {
-      ctx.fillStyle = isOverlap ? '#f1c40f' : '#1a5c1a';
-      ctx.font = 'bold 11px "DM Sans", system-ui, sans-serif';
+      const padCx = area.x + area.width / 2;
       ctx.textAlign = 'center';
-      ctx.fillText('⚽ Fútbol 1v1', area.x + area.width / 2, area.y - 18);
+      ctx.textBaseline = 'middle';
+      const labelY = area.y - 14;
+      const iconSize = 16;
+      const text = 'Fútbol 1v1';
+      ctx.font = 'bold 11px "DM Sans", system-ui, sans-serif';
+      const textWidth = ctx.measureText(text).width;
+      const totalWidth = iconSize + 6 + textWidth;
+      const iconCx = padCx - totalWidth / 2 + iconSize / 2;
+      drawGameIcon(
+        ctx,
+        CanvasIconPaths.SoccerBall,
+        iconCx,
+        labelY,
+        iconSize,
+        isOverlap ? '#f1c40f' : '#1a5c1a',
+      );
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = isOverlap ? '#f1c40f' : '#1a5c1a';
+      ctx.fillText(text, iconCx + iconSize / 2 + 6, labelY);
       ctx.font = 'bold 10px "DM Sans", system-ui, sans-serif';
       ctx.fillStyle = isOverlap ? '#e0a800' : '#2a6e2a';
-      ctx.fillText(PAD_NAMES[pad.padId], area.x + area.width / 2, area.y - 6);
+      ctx.textAlign = 'center';
+      ctx.fillText(PAD_NAMES[pad.padId], padCx, area.y - 2);
 
       if (pad.occupantName && pad.status === 'occupied') {
         ctx.font = '9px "DM Sans", system-ui, sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.fillText(pad.occupantName, area.x + area.width / 2, area.y + area.height / 2 + 4);
+        ctx.fillText(pad.occupantName, padCx, area.y + area.height / 2 + 4);
       }
     }
   }

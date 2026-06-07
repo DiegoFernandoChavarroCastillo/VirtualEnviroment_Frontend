@@ -36,7 +36,7 @@ type CurrentUserProfile = {
 };
 
 const defaultProfile: CurrentUserProfile = {
-  bio: 'Dev en progreso ☕💻 Buscando partners para hackathons y cafés. Semestre 6 y sobreviviendo.',
+  bio: 'Dev en progreso | Buscando partners para hackathons y cafés. Semestre 6 y sobreviviendo.',
   interests: ['coding', 'coffee', 'music', 'gaming'],
   availability: [
     { day: 'Lun', start: '10:00', end: '12:00' },
