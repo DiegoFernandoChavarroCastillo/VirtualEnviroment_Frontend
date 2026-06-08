@@ -11,7 +11,7 @@ beforeEach(() => {
       shotgun: { damage: 1, speed: 8, fireRate: 1, pellets: 3, spread: 0.25, ammo: 6 },
       rocket: { damage: 1, speed: 5, fireRate: 3, explosionRadius: 120, ammo: 3 },
     },
-    shield: { durationMs: 15000 },
+    shield: { maxShield: 100 },
     arenaConfig: {
       arena: { width: 1600, height: 1200 },
       player: { radius: 20, speed: 5, maxHealth: 100 },

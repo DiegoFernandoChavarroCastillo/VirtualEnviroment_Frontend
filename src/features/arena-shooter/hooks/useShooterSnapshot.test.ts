@@ -9,8 +9,8 @@ function makeSnapshot(tick: number, timestamp: number): ShooterSnapshot {
     tick,
     timestamp,
     players: [
-      { userId: 'p1', x: 100, y: 200, vx: 0, vy: 0, name: 'P1', health: 100, kills: 0, deaths: 0 },
-      { userId: 'p2', x: 300, y: 400, vx: 5, vy: 3, name: 'P2', health: 100, kills: 0, deaths: 0 },
+      { userId: 'p1', x: 100, y: 200, vx: 0, vy: 0, name: 'P1', health: 100, shield: 0, kills: 0, deaths: 0 },
+      { userId: 'p2', x: 300, y: 400, vx: 5, vy: 3, name: 'P2', health: 100, shield: 0, kills: 0, deaths: 0 },
     ],
     projectiles: [
       { id: 'proj1', x: 500, y: 600, vx: 8, vy: 0, ownerId: 'p1' },
